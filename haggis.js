@@ -1,3 +1,7 @@
+const parseLogAndPopulateFormSync = async() => {
+    await parseLogAndPopulateForm();
+};
+
 async function parseLogAndPopulateForm() {
     const stats = parseLog(document.getElementById('logText').value);
     const data = await serializeJson(stats);
@@ -26,45 +30,22 @@ function parseLog(text) {
         playerStats: {},
     };
 
+    let inLog = false;
     let currentRound = null;
 
     for (const line of lines) {
         const words = line.split(' ');
         const player = words[0];
 
-        if (player === 'Move'
-            || player === 'Rematch'
-            || player === 'Game'
-            || player === ''
-            || line.includes('preferences')) {
+        if (player === 'Move' || player === '') {
             continue;
         }
 
-        if (game.players.length < 2 && !game.players.includes(player)) {
-            game.players.push(player);
-            game.playerStats[player] = {
-                tens: 0,
-                bombs: 0,
-                bets: {},
-                totalBets: 0,
-                successfulBets: 0,
-                wins: 0,
-                score: 0,
-                led: 0,
-                ledAndWon: 0,
-                sumTotal: 0,
-                sumMin: 0,
-                sumMax: 0,
-                sumAvg: 0,
-            };
-        }
-
-        const score = line.match(/scores (\d+) point/);
-        if (score) {
-            game.playerStats[player].score += Number(score[1]);
-        }
-
         if (line.includes('starts a new round')) {
+            inLog = true;
+            if (!(player in game.playerStats)) {
+                game.playerStats[player] = createPlayerStats();
+            }
             game.playerStats[player].led += 1;
             currentRound = {
                 startPlayer: player,
@@ -76,6 +57,22 @@ function parseLog(text) {
             };
             game.rounds.push(currentRound);
             continue;
+        }
+
+        if (!inLog) {
+            continue;
+        }
+
+        if (game.players.length < 2 && !game.players.includes(player)) {
+            game.players.push(player);
+            if (!(player in game.playerStats)) {
+                game.playerStats[player] = createPlayerStats();
+            }
+        }
+
+        const score = line.match(/scores (\d+) point/);
+        if (score) {
+            game.playerStats[player].score += Number(score[1]);
         }
 
         if (words[1] === 'bets') {
@@ -150,7 +147,7 @@ function parseLog(text) {
                 game.playerStats[name].sumMax = max;
             }
 
-            continue;
+            break;
         }
 
         for (const name of game.players) {
@@ -175,6 +172,24 @@ function parseLog(text) {
     }
 
     return game;
+}
+
+function createPlayerStats() {
+    return {
+       tens: 0,
+       bombs: 0,
+       bets: {},
+       totalBets: 0,
+       successfulBets: 0,
+       wins: 0,
+       score: 0,
+       led: 0,
+       ledAndWon: 0,
+       sumTotal: 0,
+       sumMin: 0,
+       sumMax: 0,
+       sumAvg: 0,
+   };
 }
 
 function renderStatsAsHtmlString(stats) {
