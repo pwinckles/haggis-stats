@@ -1,11 +1,8 @@
-const parseLogAndPopulateFormSync = async() => {
-    await parseLogAndPopulateForm();
-};
-
 async function parseLogAndPopulateForm() {
     const stats = parseLog(document.getElementById('logText').value);
     const data = await serializeJson(stats);
     document.getElementById('data').value = data;
+    document.getElementById('statsForm').submit();
 }
 
 async function renderStats() {
