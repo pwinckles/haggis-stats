@@ -102,7 +102,7 @@ function parseLog(logLines) {
       }
 
       if (isBomb(words[2])) {
-        if (isSequenceBomb(words[2])) {
+        if (isColorBomb(words[2])) {
           currentRound.colorBombs[player] =
             (currentRound.colorBombs[player] ?? 0) + 1;
           game.playerStats[player].colorBombs += 1;
@@ -206,7 +206,7 @@ function parseLog(logLines) {
       }
     }
   }
-  return game;
+    return game;
 }
 
 function createPlayerStats() {
@@ -300,7 +300,7 @@ function renderStatsAsHtmlString(stats) {
   output += `    <td>${player2Stats.tens}</td>\n`;
   output += "  </tr>\n";
   output += "  <tr>\n";
-  output += "    <td>Sequence Bombs</td>\n";
+  output += "    <td>Color Bombs</td>\n";
   output += `    <td>${player1Stats.colorBombs}</td>\n`;
   output += `    <td>${player2Stats.colorBombs}</td>\n`;
   output += "  </tr>\n";
@@ -512,7 +512,7 @@ function stripColorFromCard(inputString) {
   return inputString;
 }
 
-function isSequenceBomb(inputString) {
+function isColorBomb(inputString) {
   const regex = /^(?:([rpyb])3)-\1?5-\1?7-\1?9$/;
   return regex.test(inputString);
 }
