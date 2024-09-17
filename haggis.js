@@ -159,7 +159,8 @@ function parseLog(text) {
 
         for (const name of game.players) {
             if (name + ':' === player) {
-                for (const card of words) {
+                for (const word of words) {
+                    const card = word.substring(0, word.length - 1);
                     if (isNaN(card)) {
                         continue;
                     }
