@@ -46,8 +46,7 @@ function parseLog(logLines) {
         startPlayer: player,
         bets: {},
         tens: {},
-        bombs: {},
-        sequenceBombs: {},
+        colorBombs: {},
         rainbowBombs: {},
         sums: {},
         points: {},
@@ -74,6 +73,7 @@ function parseLog(logLines) {
       currentRound.points[player] =
         (currentRound.points[player] ?? 0) + Number(score[1]);
     }
+
     if (words[1].includes("bets")) {
       currentRound.bets[player] = words[2];
       game.playerStats[player].bets[words[2]] =
@@ -103,9 +103,9 @@ function parseLog(logLines) {
 
       if (isBomb(words[2])) {
         if (isSequenceBomb(words[2])) {
-          currentRound.sequenceBombs[player] =
-            (currentRound.sequenceBombs[player] ?? 0) + 1;
-          game.playerStats[player].sequenceBombs += 1;
+          currentRound.colorBombs[player] =
+            (currentRound.colorBombs[player] ?? 0) + 1;
+          game.playerStats[player].colorBombs += 1;
         } else {
           currentRound.rainbowBombs[player] =
             (currentRound.rainbowBombs[player] ?? 0) + 1;
@@ -183,29 +183,29 @@ function parseLog(logLines) {
             game.playerStats[name].tens += 1;
           }
 
-        for (const name of game.players) {
-            if (name + ':' === player) {
-                for (const word of words) {
-                    const card = word.substring(0, word.length - 1);
-                    if (isNaN(card)) {
-                        continue;
-                    }
-
-                    const num = Number(card);
-                    if (num === 10) {
-                        currentRound.tens[name] = (currentRound.tens[name] ?? 0) + 1;
-                        game.playerStats[name].tens += 1;
-                    }
-
-                    currentRound.sums[name] = (currentRound.sums[name] ?? 0) + num;
-                    game.playerStats[name].sumTotal += num;
+          for (const name of game.players) {
+            if (name + ":" === player) {
+              for (const word of words) {
+                const card = word.substring(0, word.length - 1);
+                if (isNaN(card)) {
+                  continue;
                 }
+
+                const num = Number(card);
+                if (num === 10) {
+                  currentRound.tens[name] = (currentRound.tens[name] ?? 0) + 1;
+                  game.playerStats[name].tens += 1;
+                }
+
+                currentRound.sums[name] = (currentRound.sums[name] ?? 0) + num;
+                game.playerStats[name].sumTotal += num;
+              }
             }
+          }
         }
       }
     }
   }
-
   return game;
 }
 
@@ -213,7 +213,7 @@ function createPlayerStats() {
   return {
     tens: 0,
     bombs: 0,
-    sequenceBombs: 0,
+    colorBombs: 0,
     rainbowBombs: 0,
     bets: {},
     totalBets: 0,
@@ -301,8 +301,8 @@ function renderStatsAsHtmlString(stats) {
   output += "  </tr>\n";
   output += "  <tr>\n";
   output += "    <td>Sequence Bombs</td>\n";
-  output += `    <td>${player1Stats.sequenceBombs}</td>\n`;
-  output += `    <td>${player2Stats.sequenceBombs}</td>\n`;
+  output += `    <td>${player1Stats.colorBombs}</td>\n`;
+  output += `    <td>${player2Stats.colorBombs}</td>\n`;
   output += "  </tr>\n";
   output += "  <tr>\n";
   output += "    <td>Rainbow Bombs</td>\n";
@@ -386,19 +386,14 @@ function renderStatsAsHtmlString(stats) {
     output += `    <td>${round.tens[player2] ?? 0}</td>\n`;
     output += "  </tr>\n";
     output += "  <tr>\n";
-    output += "    <td>Rainbow/Color Bombs</td>\n";
-    output += `    <td>${round.bombs[player1] ?? 0}</td>\n`;
-    output += `    <td>${round.bombs[player2] ?? 0}</td>\n`;
-    output += "  </tr>\n";
-    output += "  <tr>\n";
     output += "    <td>Rainbow Bombs</td>\n";
     output += `    <td>${round.rainbowBombs[player1] ?? 0}</td>\n`;
     output += `    <td>${round.rainbowBombs[player2] ?? 0}</td>\n`;
     output += "  </tr>\n";
     output += "  <tr>\n";
     output += "    <td>Color Bombs</td>\n";
-    output += `    <td>${round.sequenceBombs[player1] ?? 0}</td>\n`;
-    output += `    <td>${round.sequenceBombs[player2] ?? 0}</td>\n`;
+    output += `    <td>${round.colorBombs[player1] ?? 0}</td>\n`;
+    output += `    <td>${round.colorBombs[player2] ?? 0}</td>\n`;
     output += "  </tr>\n";
     output += "  <tr>\n";
     output += "    <td>Card Sum</td>\n";
