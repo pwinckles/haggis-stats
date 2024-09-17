@@ -1,5 +1,5 @@
 async function parseLogAndPopulateForm() {
-    const stats = parseLog(document.getElementById('logText').value);
+    const stats = parseLog(document.getElementById('allLogs').textContent);
     const data = await serializeJson(stats);
     document.getElementById('data').value = data;
     document.getElementById('statsForm').submit();
@@ -19,8 +19,7 @@ async function renderStats() {
     document.getElementById("stats").innerHTML = html;
 }
 
-function parseLog(text) {
-    const lines = text.split('\n');
+function parseLog(logLines) {
     const game = {
         players: [],
         rounds: [],
@@ -30,10 +29,9 @@ function parseLog(text) {
     let inLog = false;
     let currentRound = null;
 
-    for (const line of lines) {
-        const words = line.split(' ');
+    for (const line of JSON.parse(logLines)) {
+        const words = line.split(/\s+/);
         const player = words[0];
-
         if (player === 'Move' || player === '') {
             continue;
         }
@@ -49,6 +47,8 @@ function parseLog(text) {
                 bets: {},
                 tens: {},
                 bombs: {},
+                sequenceBombs: {},
+                rainbowBombs: {},
                 sums: {},
                 points: {},
                 haggisTens: 0,
@@ -73,23 +73,27 @@ function parseLog(text) {
             game.playerStats[player].score += Number(score[1]);
             currentRound.points[player] = (currentRound.points[player] ?? 0) + Number(score[1]);
         }
-
-        if (words[1] === 'bets') {
+        if (words[1].includes('bets')) {
+            console.log("words[2]")
+            console.log(words[2])
+            console.log("currentRound.bets[player]")
+            console.log(currentRound.bets[player])
             currentRound.bets[player] = words[2];
             game.playerStats[player].bets[words[2]] = (game.playerStats[player].bets[words[2]] ?? 0) + 1;
             game.playerStats[player].totalBets += 1;
             continue;
         }
 
-        if (words[1] === 'plays') {
+        if (words[1].includes('plays')) {
             const cards = words[2].split('-');
 
             for (const card of cards) {
-                if (isNaN(card)) {
+                const colorRemoved = stripColorFromCard(card);
+                if (isNaN(colorRemoved)) {
                     continue;
                 }
 
-                const num = Number(card);
+                const num = Number(colorRemoved);
                 if (num === 10) {
                     currentRound.tens[player] = (currentRound.tens[player] ?? 0) + 1;
                     game.playerStats[player].tens += 1;
@@ -99,9 +103,14 @@ function parseLog(text) {
                 game.playerStats[player].sumTotal += num;
             }
 
-            if (words[2] === '3-5-7-9') {
-                currentRound.bombs[player] = (currentRound.bombs[player] ?? 0) + 1;
-                game.playerStats[player].bombs += 1;
+            if (isBomb(words[2])) {
+                if (isSequenceBomb(words[2])) {
+                    currentRound.sequenceBombs[player] = (currentRound.sequenceBombs[player] ?? 0) + 1;
+                    game.playerStats[player].sequenceBombs += 1;
+                } else {
+                    currentRound.rainbowBombs[player] = (currentRound.rainbowBombs[player] ?? 0) + 1;
+                    game.playerStats[player].rainbowBombs += 1;
+                }
             }
 
             continue;
@@ -111,6 +120,9 @@ function parseLog(text) {
             currentRound.winner = player;
             currentRound.remainingCards = Number(words[8]);
             game.playerStats[player].wins += 1;
+            console.log("currentRound.bets[player]")
+            console.log(currentRound.bets[player])
+
             if (currentRound.bets[player]) {
                 game.playerStats[player].successfulBets += 1;
             }
@@ -147,12 +159,12 @@ function parseLog(text) {
             }
 
             for (const round of game.rounds) {
-                if (round.sums[game.players[0]] < round.sums[game.players[1]]) {
-                    game.playerStats[game.players[1]].largerSum += 1;
-                } else if (round.sums[game.players[0]] > round.sums[game.players[1]]) {
-                    game.playerStats[game.players[0]].largerSum += 1;
+                    if (round.sums[game.players[0]] < round.sums[game.players[1]]) {
+                        game.playerStats[game.players[1]].largerSum += 1;
+                    } else if (round.sums[game.players[0]] > round.sums[game.players[1]]) {
+                        game.playerStats[game.players[0]].largerSum += 1;
+                    }
                 }
-            }
 
             break;
         }
@@ -160,7 +172,8 @@ function parseLog(text) {
         for (const name of game.players) {
             if (name + ':' === player) {
                 for (const card of words) {
-                    if (isNaN(card)) {
+                    const colorRemoved = stripColorFromCard(card);
+                    if (isNaN(colorRemoved)) {
                         continue;
                     }
 
@@ -185,6 +198,8 @@ function createPlayerStats() {
     return {
        tens: 0,
        bombs: 0,
+       sequenceBombs: 0,
+       rainbowBombs: 0,
        bets: {},
        totalBets: 0,
        successfulBets: 0,
@@ -270,20 +285,25 @@ function renderStatsAsHtmlString(stats) {
     output += `    <td>${player2Stats.tens}</td>\n`;
     output += "  </tr>\n";
     output += "  <tr>\n";
-    output += "    <td>Rainbow/Color Bombs</td>\n";
-    output += `    <td>${player1Stats.bombs}</td>\n`;
-    output += `    <td>${player2Stats.bombs}</td>\n`;
+    output += "    <td>Sequence Bombs</td>\n";
+    output += `    <td>${player1Stats.sequenceBombs}</td>\n`;
+    output += `    <td>${player2Stats.sequenceBombs}</td>\n`;
+    output += "  </tr>\n";
+    output += "  <tr>\n";
+    output += "    <td>Rainbow Bombs</td>\n";
+    output += `    <td>${player1Stats.rainbowBombs}</td>\n`;
+    output += `    <td>${player2Stats.rainbowBombs}</td>\n`;
     output += "  </tr>\n";
     output += "  <tr>\n";
     output += "    <td>Card Sum</td>\n";
     output += `    <td>${player1Stats.sumTotal}</td>\n`;
     output += `    <td>${player2Stats.sumTotal}</td>\n`;
     output += "  </tr>\n";
-    output += "  <tr>\n";
     output += "    <td>Rounds with > Sum</td>\n";
     output += `    <td>${player1Stats.largerSum}</td>\n`;
     output += `    <td>${player2Stats.largerSum}</td>\n`;
     output += "  </tr>\n";
+    output += "  <tr>\n";
     output += "  <tr>\n";
     output += "    <td>Card Sum Avg</td>\n";
     output += `    <td>${player1Stats.sumAvg.toFixed(2)}</td>\n`;
@@ -335,7 +355,6 @@ function renderStatsAsHtmlString(stats) {
         output += `    <th>${player1}</th>\n`;
         output += `    <th>${player2}</th>\n`;
         output += "  </tr>\n";
-        output += "  <tr>\n";
         output += "    <td>Points</td>\n";
         output += `    <td>${round.points[player1] ?? 0}</td>\n`;
         output += `    <td>${round.points[player2] ?? 0}</td>\n`;
@@ -344,7 +363,6 @@ function renderStatsAsHtmlString(stats) {
         output += "    <td>Bets</td>\n";
         output += `    <td>${round.bets[player1] ?? 'NA'}</td>\n`;
         output += `    <td>${round.bets[player2] ?? 'NA'}</td>\n`;
-        output += "  </tr>\n";
         output += "  <tr>\n";
         output += "    <td>10s</td>\n";
         output += `    <td>${round.tens[player1] ?? 0}</td>\n`;
@@ -354,6 +372,16 @@ function renderStatsAsHtmlString(stats) {
         output += "    <td>Rainbow/Color Bombs</td>\n";
         output += `    <td>${round.bombs[player1] ?? 0}</td>\n`;
         output += `    <td>${round.bombs[player2] ?? 0}</td>\n`;
+        output += "  </tr>\n";
+        output += "  <tr>\n";
+        output += "    <td>Rainbow Bombs</td>\n";
+        output += `    <td>${round.rainbowBombs[player1] ?? 0}</td>\n`;
+        output += `    <td>${round.rainbowBombs[player2] ?? 0}</td>\n`;
+        output += "  </tr>\n";
+        output += "  <tr>\n";
+        output += "    <td>Color Bombs</td>\n";
+        output += `    <td>${round.sequenceBombs[player1] ?? 0}</td>\n`;
+        output += `    <td>${round.sequenceBombs[player2] ?? 0}</td>\n`;
         output += "  </tr>\n";
         output += "  <tr>\n";
         output += "    <td>Card Sum</td>\n";
@@ -400,3 +428,99 @@ function b64decode(str) {
     }
     return bytes;
 }
+
+function extractAllLogEvents(htmlString) {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(htmlString, 'text/html');
+
+    const elements = doc.body.children;
+    const allLogs = [];
+
+    for (let i = 0; i < elements.length; i++) {
+        const element = elements[i];
+
+        if (element.classList.contains('gamelogreview')) {
+            allLogs.push(element.textContent.trim());
+        }
+    }
+
+    return allLogs;
+}
+
+function extractGameData(htmlString) {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(htmlString, 'text/html');
+
+    const elements = doc.body.children;
+
+    const logs = [];
+
+    for (let i = 0; i < elements.length; i++) {
+        const element = elements[i];
+
+        if (element.classList.contains('gamelogreview')) {
+            logs.push(element.textContent.trim());
+        }
+    }
+
+    return logs;
+}
+
+function addColorData(html) {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+
+    const coloredElements = doc.querySelectorAll('[style*="color"]');
+
+    const colorPrefixMap = {
+        'rgb(224, 158, 29)': 'y',  // yellow
+        'rgb(140, 132, 191)': 'p',  // purple
+        'rgb(1, 87, 169)': 'b',    // blue
+        'rgb(215, 51, 79)': 'r'    // red
+    };
+
+    coloredElements.forEach(el => {
+        const color = el.style.color;
+        if (colorPrefixMap[color]) {
+            const prefix = colorPrefixMap[color];
+            el.textContent = prefix + el.textContent;
+        }
+    });
+
+    return doc;
+}
+
+function stripColorFromCard(inputString) {
+    if (/^[rbpy]/.test(inputString)) {
+        return inputString.slice(1);
+    }
+    return inputString;
+}
+
+function isSequenceBomb(inputString) {
+    const regex = /^(?:([rpyb])3)-\1?5-\1?7-\1?9$/;
+    return regex.test(inputString);
+}
+
+function isBomb(inputString) {
+    const regex = /^(?:[rpyb]?3)-(?:[rpyb]?5)-(?:[rpyb]?7)-(?:[rpyb]?9)$/;
+    return regex.test(inputString);
+}
+
+
+
+document.addEventListener('paste', async function (event) {
+    const clipboardData = event.clipboardData || window.clipboardData;
+    const htmlData = clipboardData.getData('text/html');
+
+    const withColor = addColorData(htmlData);
+
+    const serializer = new XMLSerializer();
+    const modifiedHtmlData = serializer.serializeToString(withColor);
+
+    const logData = extractGameData(modifiedHtmlData)
+
+    const textArea = document.getElementById('allLogs');
+    textArea.textContent = '';
+    textArea.textContent = JSON.stringify(logData);
+});

@@ -3,6 +3,20 @@
     <head>
         <title>Haggis Stats</title>
         <script type="text/javascript" src="haggis.js"></script>
+        <style>
+            table {
+                table-layout: auto; /* Allow columns to adjust automatically */
+            }
+
+            th, td {
+                padding: 0 12px; /* Add padding inside the table cells to make them wider */
+            }
+
+            /* Optional: Set a minimum width for each column */
+            th, td {
+                min-width: 50px; /* Set a minimum width for each column */
+            }
+        </style>
     </head>
     <body onload="renderStats()">
         <h1>Haggis Stats</h1>

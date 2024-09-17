@@ -3,6 +3,23 @@
     <head>
         <title>Haggis Stats</title>
         <script type="text/javascript" src="haggis.js"></script>
+        <style>
+            #allLogs { display: none;}
+
+            table {
+                width: 100%; /* Make the table take the full width of the parent */
+                table-layout: auto; /* Allow columns to adjust automatically */
+            }
+
+            th, td {
+                padding: 10px 20px; /* Add padding inside the table cells to make them wider */
+            }
+
+            /* Optional: Set a minimum width for each column */
+            th, td {
+                min-width: 150px; /* Set a minimum width for each column */
+            }
+        </style>
     </head>
     <body>
         <h1>Haggis Stats</h1>
@@ -13,6 +30,7 @@
             <li>Paste the copied game log in the following textbox</li>
         </ol>
         <form id="statsForm" action="display.html">
+            <div id="allLogs" contenteditable></div>
             <textarea id="logText" rows="10" cols="50"></textarea>
             <input type="hidden" id="data" name="data">
             <br />
