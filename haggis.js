@@ -183,8 +183,24 @@ function parseLog(logLines) {
             game.playerStats[name].tens += 1;
           }
 
-          currentRound.sums[name] = (currentRound.sums[name] ?? 0) + num;
-          game.playerStats[name].sumTotal += num;
+        for (const name of game.players) {
+            if (name + ':' === player) {
+                for (const word of words) {
+                    const card = word.substring(0, word.length - 1);
+                    if (isNaN(card)) {
+                        continue;
+                    }
+
+                    const num = Number(card);
+                    if (num === 10) {
+                        currentRound.tens[name] = (currentRound.tens[name] ?? 0) + 1;
+                        game.playerStats[name].tens += 1;
+                    }
+
+                    currentRound.sums[name] = (currentRound.sums[name] ?? 0) + num;
+                    game.playerStats[name].sumTotal += num;
+                }
+            }
         }
       }
     }
