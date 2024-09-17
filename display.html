@@ -1,26 +1,46 @@
 <!DOCTYPE html>
 <html>
-    <head>
-        <title>Haggis Stats</title>
-        <script type="text/javascript" src="haggis.js"></script>
-        <style>
-            table {
-                table-layout: auto; /* Allow columns to adjust automatically */
-            }
 
-            th, td {
-                padding: 0 12px; /* Add padding inside the table cells to make them wider */
-            }
+<head>
+    <title>Haggis Stats</title>
+    <script type="text/javascript" src="haggis.js"></script>
+    <style>
+        table {
+            table-layout: auto;
+            display: table;
+            border-spacing: 2px;
+            border-collapse: separate;
+            box-sizing: border-box;
+            text-indent: 0;
+            text-align: left;
+        }
 
-            /* Optional: Set a minimum width for each column */
-            th, td {
-                min-width: 50px; /* Set a minimum width for each column */
-            }
-        </style>
-    </head>
-    <body onload="renderStats()">
-        <h1>Haggis Stats</h1>
-        <a href="index.html">Home</a>
-        <div id="stats"></div>
-    </body>
+        th {
+            background: rgb(218, 218, 218);
+        }
+
+        #main th,
+        td {
+            padding: 2px 12px;
+            min-width: 90px;
+            vertical-align: baseline;
+            border: 1px solid #fefefe;
+        }
+
+        .shaded tr:nth-child(odd) {
+            background-color: white;
+        }
+
+        .shaded tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+    </style>
+</head>
+
+<body onload="renderStats()">
+    <h1>Haggis Stats</h1>
+    <a href="index.html">Home</a>
+    <div id="stats"></div>
+</body>
+
 </html>

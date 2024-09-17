@@ -236,7 +236,7 @@ function renderStatsAsHtmlString(stats) {
   const player1Stats = stats.playerStats[player1];
   const player2Stats = stats.playerStats[player2];
 
-  let output = "<div>\n<h4>Game</h4>\n";
+  let output = "<div>\n<h2>Game</h2>\n";
   output += "<table>\n";
   output += "  <tr>\n";
   output += "    <td>Winner</td>\n";
@@ -248,7 +248,7 @@ function renderStatsAsHtmlString(stats) {
   output += "  </tr>\n";
   output += "</table>\n";
 
-  output += "<table>\n";
+  output += "<table class='shaded'>\n";
   output += "  <tr>\n";
   output += `    <th></th>\n`;
   output += `    <th>${player1}</th>\n`;
@@ -336,11 +336,11 @@ function renderStatsAsHtmlString(stats) {
   output += "  </tr>\n";
   output += "</table>\n</div>\n";
 
-  output += "<div>\n<h4>Rounds</h4>\n";
+  output += "<div>\n<h3>Rounds</h3>\n";
 
   for (const i in stats.rounds) {
     const round = stats.rounds[i];
-    output += `<h5>Round ${Number(i) + 1}</h5>\n`;
+    output += `<h4>Round ${Number(i) + 1}</h4>\n`;
     output += "<table>\n";
     output += "  <tr>\n";
     output += "    <td>Started</td>\n";
@@ -366,12 +366,12 @@ function renderStatsAsHtmlString(stats) {
     output += "  </tr>\n";
     output += "</table>\n";
 
-    output += "<table>\n";
-    output += "  <tr>\n";
+    output += "<table class='shaded'>\n";
+    output += "  <thead>\n";
     output += `    <th></th>\n`;
     output += `    <th>${player1}</th>\n`;
     output += `    <th>${player2}</th>\n`;
-    output += "  </tr>\n";
+    output += "  </thead>\n";
     output += "    <td>Points</td>\n";
     output += `    <td>${round.points[player1] ?? 0}</td>\n`;
     output += `    <td>${round.points[player2] ?? 0}</td>\n`;
