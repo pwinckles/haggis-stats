@@ -50,6 +50,7 @@ function parseLog(text) {
                 tens: {},
                 bombs: {},
                 sums: {},
+                points: {},
                 haggisTens: 0,
             };
             game.rounds.push(currentRound);
@@ -70,6 +71,7 @@ function parseLog(text) {
         const score = line.match(/scores (\d+) point/);
         if (score) {
             game.playerStats[player].score += Number(score[1]);
+            currentRound.points[player] = (currentRound.points[player] ?? 0) + Number(score[1]);
         }
 
         if (words[1] === 'bets') {
@@ -144,6 +146,14 @@ function parseLog(text) {
                 game.playerStats[name].sumMax = max;
             }
 
+            for (const round of game.rounds) {
+                if (round.sums[game.players[0]] < round.sums[game.players[1]]) {
+                    game.playerStats[game.players[1]].largerSum += 1;
+                } else if (round.sums[game.players[0]] > round.sums[game.players[1]]) {
+                    game.playerStats[game.players[0]].largerSum += 1;
+                }
+            }
+
             break;
         }
 
@@ -186,6 +196,7 @@ function createPlayerStats() {
        sumMin: 0,
        sumMax: 0,
        sumAvg: 0,
+       largerSum: 0,
    };
 }
 
@@ -269,6 +280,11 @@ function renderStatsAsHtmlString(stats) {
     output += `    <td>${player2Stats.sumTotal}</td>\n`;
     output += "  </tr>\n";
     output += "  <tr>\n";
+    output += "    <td>Rounds with > Sum</td>\n";
+    output += `    <td>${player1Stats.largerSum}</td>\n`;
+    output += `    <td>${player2Stats.largerSum}</td>\n`;
+    output += "  </tr>\n";
+    output += "  <tr>\n";
     output += "    <td>Card Sum Avg</td>\n";
     output += `    <td>${player1Stats.sumAvg.toFixed(2)}</td>\n`;
     output += `    <td>${player2Stats.sumAvg.toFixed(2)}</td>\n`;
@@ -320,6 +336,11 @@ function renderStatsAsHtmlString(stats) {
         output += `    <th>${player2}</th>\n`;
         output += "  </tr>\n";
         output += "  <tr>\n";
+        output += "    <td>Points</td>\n";
+        output += `    <td>${round.points[player1] ?? 0}</td>\n`;
+        output += `    <td>${round.points[player2] ?? 0}</td>\n`;
+        output += "  </tr>\n";
+        output += "  <tr>\n";
         output += "    <td>5 Bets</td>\n";
         output += `    <td>${round.bets[player1]?.['5'] ?? 0}</td>\n`;
         output += `    <td>${round.bets[player2]?.['5'] ?? 0}</td>\n`;
@@ -330,7 +351,7 @@ function renderStatsAsHtmlString(stats) {
         output += `    <td>${round.bets[player2]?.['15'] ?? 0}</td>\n`;
         output += "  </tr>\n";
         output += "  <tr>\n";
-        output += "    <td>20 Bets</td>\n";
+        output += "    <td>30 Bets</td>\n";
         output += `    <td>${round.bets[player1]?.['30'] ?? 0}</td>\n`;
         output += `    <td>${round.bets[player2]?.['30'] ?? 0}</td>\n`;
         output += "  </tr>\n";
