@@ -75,10 +75,6 @@ function parseLog(logLines) {
         (currentRound.points[player] ?? 0) + Number(score[1]);
     }
     if (words[1].includes("bets")) {
-      console.log("words[2]");
-      console.log(words[2]);
-      console.log("currentRound.bets[player]");
-      console.log(currentRound.bets[player]);
       currentRound.bets[player] = words[2];
       game.playerStats[player].bets[words[2]] =
         (game.playerStats[player].bets[words[2]] ?? 0) + 1;
@@ -124,8 +120,6 @@ function parseLog(logLines) {
       currentRound.winner = player;
       currentRound.remainingCards = Number(words[8]);
       game.playerStats[player].wins += 1;
-      console.log("currentRound.bets[player]");
-      console.log(currentRound.bets[player]);
 
       if (currentRound.bets[player]) {
         game.playerStats[player].successfulBets += 1;
@@ -136,8 +130,8 @@ function parseLog(logLines) {
       continue;
     }
 
-    if (player === "Haggis:") {
-      const tenCount = [...line.matchAll(/10/g)].length;
+    if (line.includes("Haggis:")) {
+      const tenCount = [...line.matchAll(/[rpyb]10/g)].length;
       currentRound.haggisTens += tenCount;
       continue;
     }
