@@ -8,6 +8,9 @@ async function parseLogAndPopulateForm() {
 async function renderStats() {
   const urlParams = new URLSearchParams(window.location.search);
   const data = urlParams.get("data");
+  const tableId = urlParams.get("tableId");
+
+  document.getElementById("bgaLink").href = "https://boardgamearena.com/table?table=" + tableId;
 
   if (!data) {
     document.getElementById("stats").innerHTML = "Data not found";
@@ -434,10 +437,7 @@ function extractGameData(htmlString) {
   return lines;
 }
 
-function addColorData(html) {
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(html, "text/html");
-
+function addColorData(doc) {
   const coloredElements = doc.querySelectorAll('[style*="color"]');
 
   const colorPrefixMap = {
@@ -478,7 +478,14 @@ function isBomb(inputString) {
 document.addEventListener("paste", async function (event) {
   const clipboardData = event.clipboardData || window.clipboardData;
   const htmlData = clipboardData.getData("text/html");
-  const withColor = addColorData(htmlData);
+
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(htmlData, "text/html");
+
+  const tableId = extractTableId(doc);
+  document.getElementById("tableId").value = tableId;
+
+  const withColor = addColorData(doc);
   
   const serializer = new XMLSerializer();
   const serializedLogs = serializer.serializeToString(withColor);
@@ -493,4 +500,8 @@ function convertBr2nl(innerHtml) {
   const parser = new DOMParser();
   const newDoc = parser.parseFromString("<div>" + innerHtml.replaceAll("<br>", "||BR||") + "</div>", "text/xml");
   return newDoc.firstElementChild.textContent.replaceAll("||BR||", "\n");
+}
+
+function extractTableId(doc) {
+  return RegExp(/Replay Haggis #(\d+)/).exec(doc.getElementById("reviewtitle").textContent)[1];
 }
