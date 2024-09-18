@@ -53,6 +53,7 @@ function parseLog(logLines) {
         rainbowBombs: {},
         sums: {},
         points: {},
+        hand: {},
       };
       game.rounds.push(currentRound);
       continue;
@@ -88,12 +89,18 @@ function parseLog(logLines) {
       const cards = words[2].split("-");
 
       for (const card of cards) {
-        const colorRemoved = stripColorFromCard(card);
-        if (isNaN(colorRemoved)) {
+        const parsedCard = parseCard(card);
+
+        if (!parsedCard) {
           continue;
         }
 
-        const num = Number(colorRemoved);
+        if (!currentRound.hand[player]) {
+          currentRound.hand[player] = createCardMap();
+        }
+        currentRound.hand[player][parsedCard.suit].push(parsedCard.rank);
+
+        const num = parsedCard.rank;
         if (num === 10) {
           currentRound.tens[player] = (currentRound.tens[player] ?? 0) + 1;
           game.playerStats[player].tens += 1;
@@ -168,12 +175,18 @@ function parseLog(logLines) {
       if (name + ":" === player) {
         for (const word of words) {
           const card = word.substring(0, word.length - 1);
-          const colorRemoved = stripColorFromCard(card);
-          if (isNaN(colorRemoved)) {
+          const parsedCard = parseCard(card);
+
+          if (!parsedCard) {
             continue;
           }
 
-          const num = Number(colorRemoved);
+          if (!currentRound.hand[name]) {
+            currentRound.hand[name] = createCardMap();
+          }
+          currentRound.hand[name][parsedCard.suit].push(parsedCard.rank);
+
+          const num = parsedCard.rank;
           if (num === 10) {
             currentRound.tens[name] = (currentRound.tens[name] ?? 0) + 1;
             game.playerStats[name].tens += 1;
@@ -207,6 +220,15 @@ function createPlayerStats() {
     sumAvg: 0,
     largerSum: 0,
   };
+}
+
+function createCardMap() {
+  return {
+    r: [],
+    y: [],
+    b: [],
+    p: [],
+  }
 }
 
 function renderStatsAsHtmlString(tableId, stats) {
@@ -375,6 +397,26 @@ function renderStatsAsHtmlString(tableId, stats) {
     output += `    <td>${round.sums[player1] ?? 0}</td>\n`;
     output += `    <td>${round.sums[player2] ?? 0}</td>\n`;
     output += "  </tr>\n";
+    output += "  <tr>\n";
+    output += "    <td>Blue</td>\n";
+    output += `    <td>${round.hand[player1].b.sort(sortNumeric).join(', ')}</td>\n`;
+    output += `    <td>${round.hand[player2].b.sort(sortNumeric).join(', ')}</td>\n`;
+    output += "  </tr>\n";
+    output += "  <tr>\n";
+    output += "    <td>Purple</td>\n";
+    output += `    <td>${round.hand[player1].p.sort(sortNumeric).join(', ')}</td>\n`;
+    output += `    <td>${round.hand[player2].p.sort(sortNumeric).join(', ')}</td>\n`;
+    output += "  </tr>\n";
+    output += "  <tr>\n";
+    output += "    <td>Red</td>\n";
+    output += `    <td>${round.hand[player1].r.sort(sortNumeric).join(', ')}</td>\n`;
+    output += `    <td>${round.hand[player2].r.sort(sortNumeric).join(', ')}</td>\n`;
+    output += "  </tr>\n";
+    output += "  <tr>\n";
+    output += "    <td>Yellow</td>\n";
+    output += `    <td>${round.hand[player1].y.sort(sortNumeric).join(', ')}</td>\n`;
+    output += `    <td>${round.hand[player2].y.sort(sortNumeric).join(', ')}</td>\n`;
+    output += "  </tr>\n";
     output += "</table>\n";
   }
 
@@ -458,11 +500,14 @@ function addColorData(doc) {
   return doc;
 }
 
-function stripColorFromCard(inputString) {
-  if (/^[rbpy]/.test(inputString)) {
-    return inputString.slice(1);
+function parseCard(text) {
+  if (/^[rbpy]\d+/.test(text)) {
+    return {
+      suit: text.charAt(0),
+      rank: Number(text.slice(1))
+    }
   }
-  return inputString;
+  return null;
 }
 
 function isColorBomb(inputString) {
@@ -504,4 +549,8 @@ function convertBr2nl(innerHtml) {
 
 function extractTableId(doc) {
   return RegExp(/Replay Haggis #(\d+)/).exec(doc.getElementById("reviewtitle").textContent)[1];
+}
+
+function sortNumeric(a, b) {
+  return a - b;
 }
