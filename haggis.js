@@ -50,7 +50,6 @@ function parseLog(logLines) {
         rainbowBombs: {},
         sums: {},
         points: {},
-        haggisTens: 0,
       };
       game.rounds.push(currentRound);
       continue;
@@ -130,12 +129,6 @@ function parseLog(logLines) {
       continue;
     }
 
-    if (line.includes("Haggis:")) {
-      const tenCount = [...line.matchAll(/[rpyb]10/g)].length;
-      currentRound.haggisTens += tenCount;
-      continue;
-    }
-
     if (line.includes("The end of the game")) {
       game.winner = words[5];
 
@@ -177,31 +170,14 @@ function parseLog(logLines) {
             continue;
           }
 
-          const num = Number(card);
+          const num = Number(colorRemoved);
           if (num === 10) {
             currentRound.tens[name] = (currentRound.tens[name] ?? 0) + 1;
             game.playerStats[name].tens += 1;
           }
 
-          for (const name of game.players) {
-            if (name + ":" === player) {
-              for (const word of words) {
-                const card = word.substring(0, word.length - 1);
-                if (isNaN(card)) {
-                  continue;
-                }
-
-                const num = Number(card);
-                if (num === 10) {
-                  currentRound.tens[name] = (currentRound.tens[name] ?? 0) + 1;
-                  game.playerStats[name].tens += 1;
-                }
-
-                currentRound.sums[name] = (currentRound.sums[name] ?? 0) + num;
-                game.playerStats[name].sumTotal += num;
-              }
-            }
-          }
+          currentRound.sums[name] = (currentRound.sums[name] ?? 0) + num;
+          game.playerStats[name].sumTotal += num;
         }
       }
     }
@@ -290,7 +266,7 @@ function renderStatsAsHtmlString(stats) {
   output += `    <td>${player2Stats.led}</td>\n`;
   output += "  </tr>\n";
   output += "  <tr>\n";
-  output += "    <td>Started & Won</td>\n";
+  output += "    <td>Started & Out First</td>\n";
   output += `    <td>${player1Stats.ledAndWon}</td>\n`;
   output += `    <td>${player2Stats.ledAndWon}</td>\n`;
   output += "  </tr>\n";
@@ -347,16 +323,12 @@ function renderStatsAsHtmlString(stats) {
     output += `    <td>${round.startPlayer}</td>\n`;
     output += "  </tr>\n";
     output += "  <tr>\n";
-    output += "    <td>Won</td>\n";
+    output += "    <td>Out First</td>\n";
     output += `    <td>${round.winner}</td>\n`;
     output += "  </tr>\n";
     output += "  <tr>\n";
     output += "    <td>Remaining Cards</td>\n";
     output += `    <td>${round.remainingCards}</td>\n`;
-    output += "  </tr>\n";
-    output += "  <tr>\n";
-    output += "    <td>Haggis 10s</td>\n";
-    output += `    <td>${round.haggisTens}</td>\n`;
     output += "  </tr>\n";
     output += "  <tr>\n";
     output += "    <td>Card Sum Diff</td>\n";
