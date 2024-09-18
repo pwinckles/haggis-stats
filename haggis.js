@@ -18,7 +18,7 @@ async function renderStats() {
   }
 
   const stats = await deserializeJson(data);
-  const html = renderStatsAsHtmlString(stats);
+  const html = renderStatsAsHtmlString(tableId, stats);
   document.getElementById("stats").innerHTML = html;
 }
 
@@ -209,13 +209,13 @@ function createPlayerStats() {
   };
 }
 
-function renderStatsAsHtmlString(stats) {
+function renderStatsAsHtmlString(tableId, stats) {
   const player1 = stats.players[0];
   const player2 = stats.players[1];
   const player1Stats = stats.playerStats[player1];
   const player2Stats = stats.playerStats[player2];
 
-  let output = "<div>\n<h2>Game</h2>\n";
+  let output = `<div>\n<h2>Game ${tableId}</h2>\n`;
   output += "<table>\n";
   output += "  <tr>\n";
   output += "    <td>Winner</td>\n";

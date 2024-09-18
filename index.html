@@ -12,14 +12,14 @@
         <ol>
             <li>Select the completed game in BGA</li>
             <li>Click "View Game Replay"</li>
-            <li>Select the entire game log (or all of the page content) and copy it</li>
-            <li>Paste the copied game log in the following textbox</li>
+            <li>Select the entire page and copy it</li>
+            <li>Paste the copied page into the following textbox</li>
         </ol>
         <form id="statsForm" action="display.html">
             <div id="allLogs" contenteditable></div>
             <textarea id="logText" rows="10" cols="50"></textarea>
-            <input type="hidden" id="data" name="data">
             <input type="hidden" id="tableId" name="tableId">
+            <input type="hidden" id="data" name="data">
             <br />
             <br />
             <button type="button" onclick="parseLogAndPopulateForm()">Submit</button>
