@@ -444,41 +444,12 @@ function b64decode(str) {
   return bytes;
 }
 
-function extractAllLogEvents(htmlString) {
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(htmlString, "text/html");
-
-  const elements = doc.body.children;
-  const allLogs = [];
-
-  for (let i = 0; i < elements.length; i++) {
-    const element = elements[i];
-
-    if (element.classList.contains("gamelogreview")) {
-      allLogs.push(element.textContent.trim());
-    }
-  }
-
-  return allLogs;
-}
-
 function extractGameData(htmlString) {
   const parser = new DOMParser();
   const doc = parser.parseFromString(htmlString, "text/html");
 
-  const elements = doc.body.children;
-
-  const logs = [];
-
-  for (let i = 0; i < elements.length; i++) {
-    const element = elements[i];
-
-    if (element.classList.contains("gamelogreview")) {
-      logs.push(element.textContent.trim());
-    }
-  }
-
-  return logs;
+  return Array.from(doc.querySelectorAll('.gamelogreview')).map(el => el.textContent.trim());
+  
 }
 
 function addColorData(html) {
@@ -525,15 +496,13 @@ function isBomb(inputString) {
 document.addEventListener("paste", async function (event) {
   const clipboardData = event.clipboardData || window.clipboardData;
   const htmlData = clipboardData.getData("text/html");
-
   const withColor = addColorData(htmlData);
-
+  
   const serializer = new XMLSerializer();
-  const modifiedHtmlData = serializer.serializeToString(withColor);
+  const serializedLogs = serializer.serializeToString(withColor);
 
-  const logData = extractGameData(modifiedHtmlData);
+  const logData = extractGameData(serializedLogs);
 
   const textArea = document.getElementById("allLogs");
-  textArea.textContent = "";
   textArea.textContent = JSON.stringify(logData);
 });
