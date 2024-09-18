@@ -420,8 +420,18 @@ function extractGameData(htmlString) {
   const parser = new DOMParser();
   const doc = parser.parseFromString(htmlString, "text/html");
 
-  return Array.from(doc.querySelectorAll('.gamelogreview')).map(el => el.textContent.trim());
-  
+  const lines = [];
+
+  for (const el of doc.querySelectorAll('.gamelogreview')) {
+    const innerHtml = el.innerHTML;
+    if (innerHtml.includes("<br>")) {
+      convertBr2nl(innerHtml).split("\n").forEach(l => lines.push(l));
+    } else {
+      lines.push(el.textContent);
+    }
+  }
+
+  return lines;
 }
 
 function addColorData(html) {
@@ -478,3 +488,9 @@ document.addEventListener("paste", async function (event) {
   const textArea = document.getElementById("allLogs");
   textArea.textContent = JSON.stringify(logData);
 });
+
+function convertBr2nl(innerHtml) {
+  const parser = new DOMParser();
+  const newDoc = parser.parseFromString("<div>" + innerHtml.replaceAll("<br>", "||BR||") + "</div>", "text/xml");
+  return newDoc.firstElementChild.textContent.replaceAll("||BR||", "\n");
+}
