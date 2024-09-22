@@ -469,7 +469,7 @@ function extractGameData(htmlString) {
 
   for (const el of doc.querySelectorAll('.gamelogreview')) {
     const innerHtml = el.innerHTML;
-    if (innerHtml.includes("<br>")) {
+    if (innerHtml.includes("<br")) {
       convertBr2nl(innerHtml).split("\n").forEach(l => lines.push(l));
     } else {
       lines.push(el.textContent);
