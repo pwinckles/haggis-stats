@@ -376,8 +376,8 @@ function renderStatsAsHtmlString(tableId, stats) {
     output += "    <td>Starting Score </td>\n";
     output += `    <td>${round.startingScore[player2] ? round.startingScore[player1] : 0}</td>\n`;
     output += `    <td>${round.startingScore[player2] ? round.startingScore[player2] : 0}</td>\n`;
-    output += "  <tr>\n";
     output += "  </tr>\n";
+    output += "  <tr>\n";
     output += "    <td>Points</td>\n";
     output += `    <td>${round.points[player1] ?? 0}</td>\n`;
     output += `    <td>${round.points[player2] ?? 0}</td>\n`;
