@@ -51,6 +51,7 @@ function parseLog(logLines) {
         tens: {},
         colorBombs: {},
         rainbowBombs: {},
+        startingScore: {},
         sums: {},
         points: {},
         hand: {},
@@ -198,6 +199,7 @@ function parseLog(logLines) {
       }
     }
   }
+    addPointsPerRound(game);
     return game;
 }
 
@@ -341,6 +343,7 @@ function renderStatsAsHtmlString(tableId, stats) {
 
   for (const i in stats.rounds) {
     const round = stats.rounds[i];
+    
     output += `<h4>Round ${Number(i) + 1}</h4>\n`;
     output += "<table>\n";
     output += "  <tr>\n";
@@ -369,7 +372,13 @@ function renderStatsAsHtmlString(tableId, stats) {
     output += `    <th>${player1}</th>\n`;
     output += `    <th>${player2}</th>\n`;
     output += "  </thead>\n";
-    output += "    <td>Points</td>\n";
+    output += "  <tr>\n";
+    output += "    <td>Starting Score</td>\n";
+    output += `    <td>${round.startingScore[player1] ?? 0}</td>\n`;
+    output += `    <td>${round.startingScore[player2] ?? 0}</td>\n`;
+    output += "  </tr>\n";
+    output += "  <tr>\n";
+    output += "    <td>Points Gained</td>\n";
     output += `    <td>${round.points[player1] ?? 0}</td>\n`;
     output += `    <td>${round.points[player2] ?? 0}</td>\n`;
     output += "  </tr>\n";
@@ -554,4 +563,31 @@ function extractTableId(doc) {
 
 function sortNumeric(a, b) {
   return a - b;
+}
+
+function addPointsPerRound(game) {
+    const ptsPerRound = getTotalPointsAfterEachRound(game.rounds);
+    
+    for (let i = 0; i < game.rounds.length - 1; i++) {
+        const nextRound = game.rounds[i + 1];
+        const player1 = game.players[0];
+        const player2 = game.players[1];
+
+        nextRound.startingScore = {
+            [player1]: ptsPerRound[i].points[player1],
+            [player2]: ptsPerRound[i].points[player2]
+        };
+    }
+}
+
+function getTotalPointsAfterEachRound(rounds) {
+    const totalPoints = {};
+
+    return rounds.map(round => {
+        Object.entries(round.points).forEach(([player, points]) => {
+            totalPoints[player] = (totalPoints[player] || 0) + points;
+        });
+
+        return { points: { ...totalPoints } };
+    });
 }
