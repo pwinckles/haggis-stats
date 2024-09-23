@@ -567,10 +567,7 @@ function sortNumeric(a, b) {
 function addPointsPerRound(game) {
     const ptsPerRound = getTotalPointsAfterEachRound(game.rounds);
     
-    for (let i = 0; i < game.rounds.length; i++) {
-        if (i >= game.rounds.length - 1) { 
-            return;
-        }
+    for (let i = 0; i < game.rounds.length - 1; i++) {
         const nextRound = game.rounds[i + 1];
         const player1 = game.players[0];
         const player2 = game.players[1];
