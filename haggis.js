@@ -373,12 +373,12 @@ function renderStatsAsHtmlString(tableId, stats) {
     output += `    <th>${player2}</th>\n`;
     output += "  </thead>\n";
     output += "  <tr>\n";
-    output += "    <td>Starting Score </td>\n";
-    output += `    <td>${round.startingScore[player2] ? round.startingScore[player1] : 0}</td>\n`;
-    output += `    <td>${round.startingScore[player2] ? round.startingScore[player2] : 0}</td>\n`;
+    output += "    <td>Starting Score</td>\n";
+    output += `    <td>${round.startingScore[player1] ?? 0}</td>\n`;
+    output += `    <td>${round.startingScore[player2] ?? 0}</td>\n`;
     output += "  </tr>\n";
     output += "  <tr>\n";
-    output += "    <td>Points</td>\n";
+    output += "    <td>Points Gained</td>\n";
     output += `    <td>${round.points[player1] ?? 0}</td>\n`;
     output += `    <td>${round.points[player2] ?? 0}</td>\n`;
     output += "  </tr>\n";
@@ -567,11 +567,10 @@ function sortNumeric(a, b) {
 function addPointsPerRound(game) {
     const ptsPerRound = getTotalPointsAfterEachRound(game.rounds);
     
-    game.rounds.forEach((_, i) => {
+    for (let i = 0; i < game.rounds.length; i++) {
         if (i >= game.rounds.length - 1) { 
             return;
         }
-        
         const nextRound = game.rounds[i + 1];
         const player1 = game.players[0];
         const player2 = game.players[1];
@@ -580,7 +579,7 @@ function addPointsPerRound(game) {
             [player1]: ptsPerRound[i].points[player1],
             [player2]: ptsPerRound[i].points[player2]
         };
-    });
+    }
 }
 
 function getTotalPointsAfterEachRound(rounds) {
