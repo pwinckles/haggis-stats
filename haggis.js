@@ -1,5 +1,6 @@
 async function parseLogAndPopulateForm() {
   const stats = parseLog(document.getElementById("allLogs").textContent);
+  console.log(stats);
   const data = await serializeJson(stats);
   document.getElementById("data").value = data;
   document.getElementById("statsForm").submit();
@@ -24,9 +25,11 @@ async function renderStats() {
 
 function parseLog(logLines) {
   const game = {
+    playerCount: 2,
     players: [],
     rounds: [],
     playerStats: {},
+    teams: {},
   };
 
   let inLog = false;
@@ -35,16 +38,22 @@ function parseLog(logLines) {
   for (const line of JSON.parse(logLines)) {
     const words = line.split(/\s+/);
     const player = words[0];
-    if (player === "Move" || player === "") {
+    if (player === "Move" || player === "You" || player === "") {
       continue;
     }
 
-    if (line.includes("starts a new round")) {
+    if (line.includes("starts a new round") || line.includes("will start a new round")) {
       inLog = true;
+
+      if (line.includes("will start a new round")) {
+        game.playerCount = 4;
+      }
+
       if (!(player in game.playerStats)) {
         game.playerStats[player] = createPlayerStats();
       }
       game.playerStats[player].led += 1;
+
       currentRound = {
         startPlayer: player,
         bets: {},
@@ -55,7 +64,21 @@ function parseLog(logLines) {
         sums: {},
         points: {},
         hand: {},
+        outOrder: [],
+        remainingCount: {},
+        passesLead: {},
       };
+
+      if (game.players.length === game.playerCount) {
+        for (const name of game.players) {
+          currentRound.startingScore[name] = game.playerStats[name].score;
+        }
+      } else {
+        for (const name of game.players) {
+          currentRound.startingScore[name] = 0;
+        }
+      }
+
       game.rounds.push(currentRound);
       continue;
     }
@@ -64,25 +87,71 @@ function parseLog(logLines) {
       continue;
     }
 
-    if (game.players.length < 2 && !game.players.includes(player)) {
+    if (game.players.length < game.playerCount && !game.players.includes(player)) {
       game.players.push(player);
       if (!(player in game.playerStats)) {
         game.playerStats[player] = createPlayerStats();
+        currentRound.startingScore[player] = 0;
       }
     }
 
+    let team = null;
+    if (game.playerCount === 4) {
+      team = identifyTeam(player, game);
+    }
+
+    // The order of this is important. Do not move!
     const score = line.match(/scores (\d+) point/);
     if (score) {
-      game.playerStats[player].score += Number(score[1]);
-      currentRound.points[player] =
-        (currentRound.points[player] ?? 0) + Number(score[1]);
+      const points = Number(score[1]);
+      game.playerStats[player].score += points;
+      currentRound.points[player] = (currentRound.points[player] ?? 0) + points;
+
+      if (team) {
+        game.teamStats[team].score = (game.teamStats[team].score ?? 0) + points;
+      }
+    }
+
+    if (words[1] === "sends" && Object.keys(game.teams).length != 2) {
+      const n = Object.keys(game.teams).length;
+      if (n === 1 && game.teams["team" + n].includes(player)) {
+        continue;
+      }
+      const teamName = "team" + (n + 1);
+      game.teams[teamName] = [player, words[2]];
+      if (!game.teamStats) {
+        game.teamStats = {};
+      }
+      game.teamStats[teamName] = createPlayerStats();
+      game.teamStats[teamName].slams = 0;
+      continue;
     }
 
     if (words[1].includes("bets")) {
-      currentRound.bets[player] = words[2];
-      game.playerStats[player].bets[words[2]] =
-        (game.playerStats[player].bets[words[2]] ?? 0) + 1;
-      game.playerStats[player].totalBets += 1;
+      if (game.playerCount === 2) {
+        currentRound.bets[player] = words[2];
+        game.playerStats[player].bets[words[2]] = (game.playerStats[player].bets[words[2]] ?? 0) + 1;
+        game.playerStats[player].totalBets += 1;
+      } else if (game.playerCount === 4) {
+        for (const member of game.teams[team]) {
+          if (currentRound.bets[member]) {
+            const oldBet = currentRound.bets[member];
+            delete currentRound.bets[member];
+            game.playerStats[member].bets[oldBet] -= 1;
+            game.playerStats[member].totalBets -= 1
+            game.teamStats[team].bets[oldBet] -= 1;
+            game.teamStats[team].totalBets -= 1;
+            break;
+          }
+        }
+
+        currentRound.bets[player] = words[2];
+        game.playerStats[player].bets[words[2]] = (game.playerStats[player].bets[words[2]] ?? 0) + 1;
+        game.playerStats[player].totalBets += 1;
+        game.teamStats[team].bets[words[2]] = (game.teamStats[team].bets[words[2]] ?? 0) + 1;
+        game.teamStats[team].totalBets += 1;
+      }
+
       continue;
     }
 
@@ -105,79 +174,90 @@ function parseLog(logLines) {
         if (num === 10) {
           currentRound.tens[player] = (currentRound.tens[player] ?? 0) + 1;
           game.playerStats[player].tens += 1;
+
+          if (team) {
+            game.teamStats[team].tens += 1;
+          }
         }
 
         currentRound.sums[player] = (currentRound.sums[player] ?? 0) + num;
         game.playerStats[player].sumTotal += num;
+
+        if (team) {
+          game.teamStats[team].sumTotal += num;
+        }
       }
 
       if (isBomb(words[2])) {
         if (isColorBomb(words[2])) {
-          currentRound.colorBombs[player] =
-            (currentRound.colorBombs[player] ?? 0) + 1;
+          currentRound.colorBombs[player] = (currentRound.colorBombs[player] ?? 0) + 1;
           game.playerStats[player].colorBombs += 1;
+          if (team) {
+            game.teamStats[team].colorBombs += 1;
+          }
         } else {
-          currentRound.rainbowBombs[player] =
-            (currentRound.rainbowBombs[player] ?? 0) + 1;
+          currentRound.rainbowBombs[player] = (currentRound.rainbowBombs[player] ?? 0) + 1;
           game.playerStats[player].rainbowBombs += 1;
+          if (team) {
+            game.teamStats[team].rainbowBombs += 1;
+          }
         }
       }
 
       continue;
     }
 
-    if (line.includes("goes out")) {
-      currentRound.winner = player;
-      currentRound.remainingCards = Number(words[8]);
-      game.playerStats[player].wins += 1;
+    if (line.includes("achieves a slam")) {
+      game.teamStats[team].slams += 1;
+    }
 
-      if (currentRound.bets[player]) {
-        game.playerStats[player].successfulBets += 1;
+    if (line.includes("passes the lead")) {
+      currentRound.passesLead[player] = (currentRound.passesLead[player] ?? 0) + 1;
+      continue;
+    }
+
+    if (line.includes("goes out")) {
+      currentRound.outOrder.push(player);
+      currentRound.remainingCount[player] = Number(words[8]);
+
+      if (currentRound.outOrder.length == 1) {
+        game.playerStats[player].wins += 1;
+
+        if (team) {
+          game.teamStats[team].wins += 1;
+        }
+
+        if (currentRound.bets[player]) {
+          game.playerStats[player].successfulBets += 1;
+          if (team) {
+            game.teamStats[team].successfulBets += 1;
+          }
+        }
+        if (player === currentRound.startPlayer) {
+          game.playerStats[player].ledAndWon += 1;
+          if (team) {
+            game.teamStats[team].ledAndWon += 1;
+          }
+        }
       }
-      if (player === currentRound.startPlayer) {
-        game.playerStats[player].ledAndWon += 1;
-      }
+
       continue;
     }
 
     if (line.includes("The end of the game")) {
       game.winner = words[5];
-
-      for (const name of game.players) {
-        game.playerStats[name].sumAvg =
-          game.playerStats[name].sumTotal / game.rounds.length;
-        let min = 999999;
-        let max = 0;
-        for (const round of game.rounds) {
-          const sum = round.sums[name];
-          if (sum > max) {
-            max = sum;
-          }
-          if (sum < min) {
-            min = sum;
-          }
-        }
-        game.playerStats[name].sumMin = min;
-        game.playerStats[name].sumMax = max;
+      if (game.playerCount === 4) {
+        const team = identifyTeam(words[5], game);
+        game.winner = team;
       }
-
-      for (const round of game.rounds) {
-        if (round.sums[game.players[0]] < round.sums[game.players[1]]) {
-          game.playerStats[game.players[1]].largerSum += 1;
-        } else if (round.sums[game.players[0]] > round.sums[game.players[1]]) {
-          game.playerStats[game.players[0]].largerSum += 1;
-        }
-      }
-
       break;
     }
 
     for (const name of game.players) {
       if (name + ":" === player) {
         for (const word of words) {
-          const card = word.substring(0, word.length - 1);
+          const card = word.endsWith(",") ? word.substring(0, word.length - 1) : word;
           const parsedCard = parseCard(card);
-
           if (!parsedCard) {
             continue;
           }
@@ -191,22 +271,68 @@ function parseLog(logLines) {
           if (num === 10) {
             currentRound.tens[name] = (currentRound.tens[name] ?? 0) + 1;
             game.playerStats[name].tens += 1;
+
+            if (game.playerCount === 4) {
+              const team = identifyTeam(name, game);
+              game.teamStats[team].tens += 1;
+            }
           }
 
           currentRound.sums[name] = (currentRound.sums[name] ?? 0) + num;
           game.playerStats[name].sumTotal += num;
+
+          if (game.playerCount === 4) {
+            const team = identifyTeam(name, game);
+            game.teamStats[team].sumTotal += num;
+          }
         }
       }
     }
   }
-    addPointsPerRound(game);
-    return game;
+
+  if (game.playerCount === 4) {
+    for (const round of game.rounds) {
+      const team = identifyTeam(round.startPlayer, game);
+      game.teamStats[team].led += 1;
+    }
+  }
+
+  addSumStats(game);
+  return game;
+}
+
+function addSumStats(game) {
+  for (const name of game.players) {
+    game.playerStats[name].sumAvg = game.playerStats[name].sumTotal / game.rounds.length;
+    let min = 999999;
+    let max = 0;
+    for (const round of game.rounds) {
+      const sum = round.sums[name];
+      if (sum > max) {
+        max = sum;
+      }
+      if (sum < min) {
+        min = sum;
+      }
+    }
+    game.playerStats[name].sumMin = min;
+    game.playerStats[name].sumMax = max;
+  }
+
+  if (game.playerCount === 2) {
+    for (const round of game.rounds) {
+      if (round.sums[game.players[0]] < round.sums[game.players[1]]) {
+        game.playerStats[game.players[1]].largerSum += 1;
+      } else if (round.sums[game.players[0]] > round.sums[game.players[1]]) {
+        game.playerStats[game.players[0]].largerSum += 1;
+      }
+    }
+  }
 }
 
 function createPlayerStats() {
   return {
     tens: 0,
-    bombs: 0,
     colorBombs: 0,
     rainbowBombs: 0,
     bets: {},
@@ -231,6 +357,15 @@ function createCardMap() {
     b: [],
     p: [],
   }
+}
+
+function identifyTeam(player, game) {
+  for (const team in game.teams) {
+    if (game.teams[team].includes(player)) {
+      return team;
+    }
+  }
+  return null;
 }
 
 function renderStatsAsHtmlString(tableId, stats) {
@@ -356,7 +491,7 @@ function renderStatsAsHtmlString(tableId, stats) {
     output += "  </tr>\n";
     output += "  <tr>\n";
     output += "    <td>Remaining Cards</td>\n";
-    output += `    <td>${round.remainingCards}</td>\n`;
+    output += `    <td>${round.remainingCount[round.winner]}</td>\n`;
     output += "  </tr>\n";
     output += "  <tr>\n";
     output += "    <td>Card Sum Diff</td>\n";
@@ -563,31 +698,4 @@ function extractTableId(doc) {
 
 function sortNumeric(a, b) {
   return a - b;
-}
-
-function addPointsPerRound(game) {
-    const ptsPerRound = getTotalPointsAfterEachRound(game.rounds);
-    
-    for (let i = 0; i < game.rounds.length - 1; i++) {
-        const nextRound = game.rounds[i + 1];
-        const player1 = game.players[0];
-        const player2 = game.players[1];
-
-        nextRound.startingScore = {
-            [player1]: ptsPerRound[i].points[player1],
-            [player2]: ptsPerRound[i].points[player2]
-        };
-    }
-}
-
-function getTotalPointsAfterEachRound(rounds) {
-    const totalPoints = {};
-
-    return rounds.map(round => {
-        Object.entries(round.points).forEach(([player, points]) => {
-            totalPoints[player] = (totalPoints[player] || 0) + points;
-        });
-
-        return { points: { ...totalPoints } };
-    });
 }
