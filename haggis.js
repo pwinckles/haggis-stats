@@ -19,8 +19,12 @@ async function renderStats() {
   }
 
   const stats = await deserializeJson(data);
-  const html = renderStatsAsHtmlString(tableId, stats);
-  document.getElementById("stats").innerHTML = html;
+
+  if (stats.playerCount === 2) {
+    document.getElementById("stats").innerHTML = render2pStatsAsHtmlString(tableId, stats);
+  } else if (stats.playerCount === 4) {
+    document.getElementById("stats").innerHTML = render4pStatsAsHtmlString(tableId, stats);
+  }
 }
 
 function parseLog(logLines) {
@@ -368,7 +372,7 @@ function identifyTeam(player, game) {
   return null;
 }
 
-function renderStatsAsHtmlString(tableId, stats) {
+function render2pStatsAsHtmlString(tableId, stats) {
   const player1 = stats.players[0];
   const player2 = stats.players[1];
   const player1Stats = stats.playerStats[player1];
@@ -452,11 +456,11 @@ function renderStatsAsHtmlString(tableId, stats) {
   output += `    <td>${player1Stats.sumTotal}</td>\n`;
   output += `    <td>${player2Stats.sumTotal}</td>\n`;
   output += "  </tr>\n";
+  output += "  <tr>\n";
   output += "    <td>Rounds with > Sum</td>\n";
   output += `    <td>${player1Stats.largerSum}</td>\n`;
   output += `    <td>${player2Stats.largerSum}</td>\n`;
   output += "  </tr>\n";
-  output += "  <tr>\n";
   output += "  <tr>\n";
   output += "    <td>Card Sum Avg</td>\n";
   output += `    <td>${player1Stats.sumAvg.toFixed(2)}</td>\n`;
@@ -487,7 +491,7 @@ function renderStatsAsHtmlString(tableId, stats) {
     output += "  </tr>\n";
     output += "  <tr>\n";
     output += "    <td>Out First</td>\n";
-    output += `    <td>${round.winner}</td>\n`;
+    output += `    <td>${round.outOrder[0]}</td>\n`;
     output += "  </tr>\n";
     output += "  <tr>\n";
     output += "    <td>Remaining Cards</td>\n";
@@ -503,7 +507,7 @@ function renderStatsAsHtmlString(tableId, stats) {
 
     output += "<table class='shaded'>\n";
     output += "  <thead>\n";
-    output += `    <th></th>\n`;
+    output += "    <th></th>\n";
     output += `    <th>${player1}</th>\n`;
     output += `    <th>${player2}</th>\n`;
     output += "  </thead>\n";
@@ -560,6 +564,318 @@ function renderStatsAsHtmlString(tableId, stats) {
     output += "    <td>Yellow</td>\n";
     output += `    <td>${round.hand[player1].y.sort(sortNumeric).join(', ')}</td>\n`;
     output += `    <td>${round.hand[player2].y.sort(sortNumeric).join(', ')}</td>\n`;
+    output += "  </tr>\n";
+    output += "</table>\n";
+  }
+
+  output += "</div>\n";
+
+  return output;
+}
+
+function render4pStatsAsHtmlString(tableId, stats) {
+  const team1Stats = stats.teamStats.team1;
+  const team2Stats = stats.teamStats.team2;
+
+  const team1Name = `${stats.teams.team1[0]}/${stats.teams.team1[1]}`;
+  const team2Name = `${stats.teams.team2[0]}/${stats.teams.team2[1]}`;
+
+  const player1 = stats.teams.team1[0];
+  const player2 = stats.teams.team1[1];
+  const player3 = stats.teams.team2[0];
+  const player4 = stats.teams.team2[1];
+  const player1Stats = stats.playerStats[player1];
+  const player2Stats = stats.playerStats[player2];
+  const player3Stats = stats.playerStats[player3];
+  const player4Stats = stats.playerStats[player4];
+
+  let output = `<div>\n<h2>Game ${tableId}</h2>\n`;
+  output += "<table>\n";
+  output += "  <tr>\n";
+  output += "    <td>Winner</td>\n";
+
+  if (stats.winner === "team1") {
+    output += `    <td>${team1Name}</td>\n`;
+  } else {
+    output += `    <td>${team2Name}</td>\n`;
+  }
+
+  output += "  </tr>\n";
+  output += "  <tr>\n";
+  output += "    <td>Rounds</td>\n";
+  output += `    <td>${stats.rounds.length}</td>\n`;
+  output += "  </tr>\n";
+  output += "</table>\n";
+
+  output += "<div>\n<h3>Teams</h3>\n";
+  output += "<table class='shaded'>\n";
+  output += "  <tr>\n";
+  output += "    <th></th>\n";
+  output += `    <th>${team1Name}</th>\n`;
+  output += `    <th>${team2Name}</th>\n`;
+  output += "  </tr>\n";
+  output += "  <tr>\n";
+  output += "    <td>Score</td>\n";
+  output += `    <td>${team1Stats.score}</td>\n`;
+  output += `    <td>${team2Stats.score}</td>\n`;
+  output += "  </tr>\n";
+  output += "  <tr>\n";
+  output += "    <td>Bets (w/t)</td>\n";
+  output += `    <td>${team1Stats.successfulBets}/${team1Stats.totalBets}</td>\n`;
+  output += `    <td>${team2Stats.successfulBets}/${team2Stats.totalBets}</td>\n`;
+  output += "  </tr>\n";
+  output += "  <tr>\n";
+  output += "    <td>5 Bets</td>\n";
+  output += `    <td>${team1Stats.bets["5"] ?? 0}</td>\n`;
+  output += `    <td>${team2Stats.bets["5"] ?? 0}</td>\n`;
+  output += "  </tr>\n";
+  output += "  <tr>\n";
+  output += "    <td>15 Bets</td>\n";
+  output += `    <td>${team1Stats.bets["15"] ?? 0}</td>\n`;
+  output += `    <td>${team2Stats.bets["15"] ?? 0}</td>\n`;
+  output += "  </tr>\n";
+  output += "  <tr>\n";
+  output += "    <td>30 Bets</td>\n";
+  output += `    <td>${team1Stats.bets["30"] ?? 0}</td>\n`;
+  output += `    <td>${team2Stats.bets["30"] ?? 0}</td>\n`;
+  output += "  </tr>\n";
+  output += "  <tr>\n";
+  output += "    <td>Out First</td>\n";
+  output += `    <td>${team1Stats.wins}</td>\n`;
+  output += `    <td>${team2Stats.wins}</td>\n`;
+  output += "  </tr>\n";
+  output += "  <tr>\n";
+  output += "    <td>Slams</td>\n";
+  output += `    <td>${team1Stats.slams}</td>\n`;
+  output += `    <td>${team2Stats.slams}</td>\n`;
+  output += "  </tr>\n";
+  output += "  <tr>\n";
+  output += "    <td>Started</td>\n";
+  output += `    <td>${team1Stats.led}</td>\n`;
+  output += `    <td>${team2Stats.led}</td>\n`;
+  output += "  </tr>\n";
+  output += "  <tr>\n";
+  output += "    <td>Started & Out First</td>\n";
+  output += `    <td>${team1Stats.ledAndWon}</td>\n`;
+  output += `    <td>${team2Stats.ledAndWon}</td>\n`;
+  output += "  </tr>\n";
+  output += "  <tr>\n";
+  output += "    <td>10s</td>\n";
+  output += `    <td>${team1Stats.tens}</td>\n`;
+  output += `    <td>${team2Stats.tens}</td>\n`;
+  output += "  </tr>\n";
+  output += "  <tr>\n";
+  output += "    <td>Color Bombs</td>\n";
+  output += `    <td>${team1Stats.colorBombs}</td>\n`;
+  output += `    <td>${team2Stats.colorBombs}</td>\n`;
+  output += "  </tr>\n";
+  output += "  <tr>\n";
+  output += "    <td>Rainbow Bombs</td>\n";
+  output += `    <td>${team1Stats.rainbowBombs}</td>\n`;
+  output += `    <td>${team2Stats.rainbowBombs}</td>\n`;
+  output += "  </tr>\n";
+  output += "  <tr>\n";
+  output += "    <td>Card Sum</td>\n";
+  output += `    <td>${team1Stats.sumTotal}</td>\n`;
+  output += `    <td>${team2Stats.sumTotal}</td>\n`;
+  output += "  </tr>\n";
+  output += "</table>\n</div>\n";
+
+  output += "<div>\n<h3>Players</h3>\n";
+  output += "<table class='shaded'>\n";
+  output += "  <tr>\n";
+  output += `    <th></th>\n`;
+  output += `    <th>${player1}</th>\n`;
+  output += `    <th>${player2}</th>\n`;
+  output += `    <th>${player3}</th>\n`;
+  output += `    <th>${player4}</th>\n`;
+  output += "  </tr>\n";
+  output += "  <tr>\n";
+  output += "    <td>Score</td>\n";
+  output += `    <td>${player1Stats.score}</td>\n`;
+  output += `    <td>${player2Stats.score}</td>\n`;
+  output += `    <td>${player3Stats.score}</td>\n`;
+  output += `    <td>${player4Stats.score}</td>\n`;
+  output += "  </tr>\n";
+  output += "  <tr>\n";
+  output += "    <td>Bets (w/t)</td>\n";
+  output += `    <td>${player1Stats.successfulBets}/${player1Stats.totalBets}</td>\n`;
+  output += `    <td>${player2Stats.successfulBets}/${player2Stats.totalBets}</td>\n`;
+  output += `    <td>${player3Stats.successfulBets}/${player3Stats.totalBets}</td>\n`;
+  output += `    <td>${player4Stats.successfulBets}/${player4Stats.totalBets}</td>\n`;
+  output += "  </tr>\n";
+  output += "  <tr>\n";
+  output += "    <td>5 Bets</td>\n";
+  output += `    <td>${player1Stats.bets["5"] ?? 0}</td>\n`;
+  output += `    <td>${player2Stats.bets["5"] ?? 0}</td>\n`;
+  output += `    <td>${player3Stats.bets["5"] ?? 0}</td>\n`;
+  output += `    <td>${player4Stats.bets["5"] ?? 0}</td>\n`;
+  output += "  </tr>\n";
+  output += "  <tr>\n";
+  output += "    <td>15 Bets</td>\n";
+  output += `    <td>${player1Stats.bets["15"] ?? 0}</td>\n`;
+  output += `    <td>${player2Stats.bets["15"] ?? 0}</td>\n`;
+  output += `    <td>${player3Stats.bets["15"] ?? 0}</td>\n`;
+  output += `    <td>${player4Stats.bets["15"] ?? 0}</td>\n`;
+  output += "  </tr>\n";
+  output += "  <tr>\n";
+  output += "    <td>30 Bets</td>\n";
+  output += `    <td>${player1Stats.bets["30"] ?? 0}</td>\n`;
+  output += `    <td>${player2Stats.bets["30"] ?? 0}</td>\n`;
+  output += `    <td>${player3Stats.bets["30"] ?? 0}</td>\n`;
+  output += `    <td>${player4Stats.bets["30"] ?? 0}</td>\n`;
+  output += "  </tr>\n";
+  output += "  <tr>\n";
+  output += "    <td>Out First</td>\n";
+  output += `    <td>${player1Stats.wins}</td>\n`;
+  output += `    <td>${player2Stats.wins}</td>\n`;
+  output += `    <td>${player3Stats.wins}</td>\n`;
+  output += `    <td>${player4Stats.wins}</td>\n`;
+  output += "  </tr>\n";
+  output += "  <tr>\n";
+  output += "    <td>Started</td>\n";
+  output += `    <td>${player1Stats.led}</td>\n`;
+  output += `    <td>${player2Stats.led}</td>\n`;
+  output += `    <td>${player3Stats.led}</td>\n`;
+  output += `    <td>${player4Stats.led}</td>\n`;
+  output += "  </tr>\n";
+  output += "  <tr>\n";
+  output += "    <td>Started & Out First</td>\n";
+  output += `    <td>${player1Stats.ledAndWon}</td>\n`;
+  output += `    <td>${player2Stats.ledAndWon}</td>\n`;
+  output += `    <td>${player3Stats.ledAndWon}</td>\n`;
+  output += `    <td>${player4Stats.ledAndWon}</td>\n`;
+  output += "  </tr>\n";
+  output += "  <tr>\n";
+  output += "    <td>10s</td>\n";
+  output += `    <td>${player1Stats.tens}</td>\n`;
+  output += `    <td>${player2Stats.tens}</td>\n`;
+  output += `    <td>${player3Stats.tens}</td>\n`;
+  output += `    <td>${player4Stats.tens}</td>\n`;
+  output += "  </tr>\n";
+  output += "  <tr>\n";
+  output += "    <td>Color Bombs</td>\n";
+  output += `    <td>${player1Stats.colorBombs}</td>\n`;
+  output += `    <td>${player2Stats.colorBombs}</td>\n`;
+  output += `    <td>${player3Stats.colorBombs}</td>\n`;
+  output += `    <td>${player4Stats.colorBombs}</td>\n`;
+  output += "  </tr>\n";
+  output += "  <tr>\n";
+  output += "    <td>Rainbow Bombs</td>\n";
+  output += `    <td>${player1Stats.rainbowBombs}</td>\n`;
+  output += `    <td>${player2Stats.rainbowBombs}</td>\n`;
+  output += `    <td>${player3Stats.rainbowBombs}</td>\n`;
+  output += `    <td>${player4Stats.rainbowBombs}</td>\n`;
+  output += "  </tr>\n";
+  output += "  <tr>\n";
+  output += "    <td>Card Sum</td>\n";
+  output += `    <td>${player1Stats.sumTotal}</td>\n`;
+  output += `    <td>${player2Stats.sumTotal}</td>\n`;
+  output += `    <td>${player3Stats.sumTotal}</td>\n`;
+  output += `    <td>${player4Stats.sumTotal}</td>\n`;
+  output += "  </tr>\n";
+  output += "</table>\n</div>\n</div>\n";
+
+  output += "<div>\n<h3>Rounds</h3>\n";
+
+  for (const i in stats.rounds) {
+    const round = stats.rounds[i];
+
+    output += `<h4>Round ${Number(i) + 1}</h4>\n`;
+    output += "<table>\n";
+    output += "  <tr>\n";
+    output += "    <td>Started</td>\n";
+    output += `    <td>${round.startPlayer}</td>\n`;
+    output += "  </tr>\n";
+    output += "</table>\n";
+
+    output += "<table class='shaded'>\n";
+    output += "  <tr>\n";
+    output += "    <th></th>\n";
+    output += `    <th>${team1Name}</th>\n`;
+    output += `    <th>${team2Name}</th>\n`;
+    output += "  </tr>\n";
+    output += "  <tr>\n";
+    output += `    <td>Starting Score</td>\n`;
+    output += `    <td>${round.startingScore[player1] + round.startingScore[player2]}</td>\n`;
+    output += `    <td>${round.startingScore[player3] + round.startingScore[player4]}</td>\n`;
+    output += "  </tr>\n";
+    output += "  <tr>\n";
+    output += `    <td>Points Gained</td>\n`;
+    output += `    <td>${(round.points[player1] ?? 0) + (round.points[player2] ?? 0)}</td>\n`;
+    output += `    <td>${(round.points[player3] ?? 0) + (round.points[player4] ?? 0)}</td>\n`;
+    output += "  </tr>\n";
+    output += "</table>\n";
+
+    output += "<table class='shaded'>\n";
+    output += "  <thead>\n";
+    output += "    <th></th>\n";
+    output += `    <th>${player1}</th>\n`;
+    output += `    <th>${player2}</th>\n`;
+    output += `    <th>${player3}</th>\n`;
+    output += `    <th>${player4}</th>\n`;
+    output += "  </thead>\n";
+    output += "  <tr>\n";
+    output += "    <td>Bets</td>\n";
+    output += `    <td>${round.bets[player1] ?? "NA"}</td>\n`;
+    output += `    <td>${round.bets[player2] ?? "NA"}</td>\n`;
+    output += `    <td>${round.bets[player3] ?? "NA"}</td>\n`;
+    output += `    <td>${round.bets[player4] ?? "NA"}</td>\n`;
+    output += "  <tr>\n";
+    output += "    <td>10s</td>\n";
+    output += `    <td>${round.tens[player1] ?? 0}</td>\n`;
+    output += `    <td>${round.tens[player2] ?? 0}</td>\n`;
+    output += `    <td>${round.tens[player3] ?? 0}</td>\n`;
+    output += `    <td>${round.tens[player4] ?? 0}</td>\n`;
+    output += "  </tr>\n";
+    output += "  <tr>\n";
+    output += "    <td>Rainbow Bombs</td>\n";
+    output += `    <td>${round.rainbowBombs[player1] ?? 0}</td>\n`;
+    output += `    <td>${round.rainbowBombs[player2] ?? 0}</td>\n`;
+    output += `    <td>${round.rainbowBombs[player3] ?? 0}</td>\n`;
+    output += `    <td>${round.rainbowBombs[player4] ?? 0}</td>\n`;
+    output += "  </tr>\n";
+    output += "  <tr>\n";
+    output += "    <td>Color Bombs</td>\n";
+    output += `    <td>${round.colorBombs[player1] ?? 0}</td>\n`;
+    output += `    <td>${round.colorBombs[player2] ?? 0}</td>\n`;
+    output += `    <td>${round.colorBombs[player3] ?? 0}</td>\n`;
+    output += `    <td>${round.colorBombs[player4] ?? 0}</td>\n`;
+    output += "  </tr>\n";
+    output += "  <tr>\n";
+    output += "    <td>Card Sum</td>\n";
+    output += `    <td>${round.sums[player1] ?? 0}</td>\n`;
+    output += `    <td>${round.sums[player2] ?? 0}</td>\n`;
+    output += `    <td>${round.sums[player3] ?? 0}</td>\n`;
+    output += `    <td>${round.sums[player4] ?? 0}</td>\n`;
+    output += "  </tr>\n";
+    output += "  <tr>\n";
+    output += "    <td>Blue</td>\n";
+    output += `    <td>${round.hand[player1].b.sort(sortNumeric).join(', ')}</td>\n`;
+    output += `    <td>${round.hand[player2].b.sort(sortNumeric).join(', ')}</td>\n`;
+    output += `    <td>${round.hand[player3].b.sort(sortNumeric).join(', ')}</td>\n`;
+    output += `    <td>${round.hand[player4].b.sort(sortNumeric).join(', ')}</td>\n`;
+    output += "  </tr>\n";
+    output += "  <tr>\n";
+    output += "    <td>Purple</td>\n";
+    output += `    <td>${round.hand[player1].p.sort(sortNumeric).join(', ')}</td>\n`;
+    output += `    <td>${round.hand[player2].p.sort(sortNumeric).join(', ')}</td>\n`;
+    output += `    <td>${round.hand[player3].p.sort(sortNumeric).join(', ')}</td>\n`;
+    output += `    <td>${round.hand[player4].p.sort(sortNumeric).join(', ')}</td>\n`;
+    output += "  </tr>\n";
+    output += "  <tr>\n";
+    output += "    <td>Red</td>\n";
+    output += `    <td>${round.hand[player1].r.sort(sortNumeric).join(', ')}</td>\n`;
+    output += `    <td>${round.hand[player2].r.sort(sortNumeric).join(', ')}</td>\n`;
+    output += `    <td>${round.hand[player3].r.sort(sortNumeric).join(', ')}</td>\n`;
+    output += `    <td>${round.hand[player4].r.sort(sortNumeric).join(', ')}</td>\n`;
+    output += "  </tr>\n";
+    output += "  <tr>\n";
+    output += "    <td>Yellow</td>\n";
+    output += `    <td>${round.hand[player1].y.sort(sortNumeric).join(', ')}</td>\n`;
+    output += `    <td>${round.hand[player2].y.sort(sortNumeric).join(', ')}</td>\n`;
+    output += `    <td>${round.hand[player3].y.sort(sortNumeric).join(', ')}</td>\n`;
+    output += `    <td>${round.hand[player4].y.sort(sortNumeric).join(', ')}</td>\n`;
     output += "  </tr>\n";
     output += "</table>\n";
   }
