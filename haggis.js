@@ -572,7 +572,7 @@ function render4pStatsAsHtmlString(tableId, stats) {
   output += "  </tr>\n";
   output += "  <tr>\n";
   output += "    <td>Bets (w/t)</td>\n";
-  output += `    <td>${player1Stats.successfulBets + player2Stats.successfulBets}/${player1Stats.totalBets + player1Stats.totalBets}</td>\n`;
+  output += `    <td>${player1Stats.successfulBets + player2Stats.successfulBets}/${player1Stats.totalBets + player2Stats.totalBets}</td>\n`;
   output += `    <td>${player3Stats.successfulBets + player4Stats.successfulBets}/${player3Stats.totalBets + player4Stats.totalBets}</td>\n`;
   output += "  </tr>\n";
   output += "  <tr>\n";
