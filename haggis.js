@@ -109,7 +109,7 @@ function parseLog(logLines) {
     }
 
     // The order of this is important. Do not move!
-    const score = line.match(/scores (\d+) point/);
+    const score = line.match(/scores? (\d+) point/);
     if (score) {
       const points = Number(score[1]);
       game.playerStats[player].score += points;
@@ -191,6 +191,7 @@ function parseLog(logLines) {
     if (line.includes("achieves a slam")) {
       game.playerStats[player].slams += 1;
       currentRound.outOrder.push(player);
+      currentRound.remainingCount[player] = currentRound.remainingCount[currentRound.outOrder[0]];
     }
 
     if (line.includes("passes the lead")) {
@@ -447,7 +448,7 @@ function render2pStatsAsHtmlString(tableId, stats) {
     output += "  </tr>\n";
     output += "  <tr>\n";
     output += "    <td>Remaining Cards</td>\n";
-    output += `    <td>${round.remainingCount[round.winner]}</td>\n`;
+    output += `    <td>${round.remainingCount[round.outOrder[0]]}</td>\n`;
     output += "  </tr>\n";
     output += "  <tr>\n";
     output += "    <td>Card Sum Diff</td>\n";
@@ -801,6 +802,13 @@ function render4pStatsAsHtmlString(tableId, stats) {
     output += `    <td>${round.outOrder.indexOf(player2) + 1}</td>\n`;
     output += `    <td>${round.outOrder.indexOf(player3) + 1}</td>\n`;
     output += `    <td>${round.outOrder.indexOf(player4) + 1}</td>\n`;
+    output += "  </tr>\n";
+    output += "  <tr>\n";
+    output += "    <td>Remaining Cards</td>\n";
+    output += `    <td>${round.remainingCount[player1] ?? 0}</td>\n`;
+    output += `    <td>${round.remainingCount[player2] ?? 0}</td>\n`;
+    output += `    <td>${round.remainingCount[player3] ?? 0}</td>\n`;
+    output += `    <td>${round.remainingCount[player4] ?? 0}</td>\n`;
     output += "  </tr>\n";
     output += "  <tr>\n";
     output += "    <td>10s</td>\n";
