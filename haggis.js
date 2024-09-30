@@ -226,6 +226,11 @@ function parseLog(logLines) {
       break;
     }
 
+    if (line.includes("concedes the game")) {
+      game.conceder = words[0];         
+      game.rounds.pop(); // remove empty stats from last round - can't be parsed
+    }
+
     for (const name of game.players) {
       if (name + ":" === player) {
         for (const word of words) {
@@ -335,7 +340,7 @@ function render2pStatsAsHtmlString(tableId, stats) {
   output += "<table>\n";
   output += "  <tr>\n";
   output += "    <td>Winner</td>\n";
-  output += `    <td>${stats.winner}</td>\n`;
+  output += `    <td>${stats.winner}${stats.conceder ? ` (${stats.conceder} concedes)` : ''}</td>\n`;
   output += "  </tr>\n";
   output += "  <tr>\n";
   output += "    <td>Rounds</td>\n";
