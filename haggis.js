@@ -227,7 +227,7 @@ function parseLog(logLines) {
     }
 
     if (line.includes("concedes the game")) {
-      game.conceder = words[0];         
+      game.conceder = player;
       game.rounds.pop(); // remove empty stats from last round - can't be parsed
     }
 
