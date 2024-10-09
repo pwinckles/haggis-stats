@@ -340,8 +340,16 @@ function render2pStatsAsHtmlString(tableId, stats) {
   output += "<table>\n";
   output += "  <tr>\n";
   output += "    <td>Winner</td>\n";
-  output += `    <td>${stats.winner}${stats.conceder && ` (${stats.conceder} concedes)`}</td>\n`;
+  output += `    <td>${stats.winner}</td>\n`;
   output += "  </tr>\n";
+
+  if (stats.conceder) {
+    output += "  <tr>\n";
+    output += "    <td>Conceder</td>\n";
+    output += `    <td>${stats.conceder}</td>\n`;
+    output += "  </tr>\n";
+  }
+
   output += "  <tr>\n";
   output += "    <td>Rounds</td>\n";
   output += `    <td>${stats.rounds.length}</td>\n`;
