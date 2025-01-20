@@ -964,9 +964,12 @@ function addColorData(doc) {
 
 function parseCard(text) {
   if (/^[rbpy]\d+/.test(text)) {
-    return {
-      suit: text.charAt(0),
-      rank: Number(text.slice(1))
+    const rank = Number(text.slice(1));
+    if (!isNaN(rank)) {
+      return {
+        suit: text.charAt(0),
+        rank: rank
+      }
     }
   }
   return null;
