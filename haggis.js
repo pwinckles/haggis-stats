@@ -114,6 +114,14 @@ function parseLog(logLines) {
       const points = Number(score[1]);
       game.playerStats[player].score += points;
       currentRound.points[player] = (currentRound.points[player] ?? 0) + points;
+
+      if (line.includes("trick") || line.includes("remaining")) {
+        game.playerStats[player].pointsFromCards += points;
+      } else if (line.includes("bet")) {
+        game.playerStats[player].pointsFromBets += points;
+      } else if (line.includes("goes out")) {
+        game.playerStats[player].pointsFromRemaining += points;
+      }
     }
 
     if (words[1] === "sends" && Object.keys(game.teams).length != 2) {
@@ -301,6 +309,9 @@ function createPlayerStats() {
     successfulBets: 0,
     wins: 0,
     score: 0,
+    pointsFromCards: 0,
+    pointsFromBets: 0,
+    pointsFromRemaining: 0,
     led: 0,
     ledAndWon: 0,
     sumTotal: 0,
@@ -367,6 +378,26 @@ function render2pStatsAsHtmlString(tableId, stats) {
   output += `    <td>${player1Stats.score}</td>\n`;
   output += `    <td>${player2Stats.score}</td>\n`;
   output += "  </tr>\n";
+
+  // This was added much later
+  if (Object.hasOwn(player1Stats, "pointsFromCards")) {
+    output += "  <tr>\n";
+    output += "    <td>Captured Points</td>\n";
+    output += `    <td>${player1Stats.pointsFromCards}</td>\n`;
+    output += `    <td>${player2Stats.pointsFromCards}</td>\n`;
+    output += "  </tr>\n";
+    output += "  <tr>\n";
+    output += "    <td>5x Points</td>\n";
+    output += `    <td>${player1Stats.pointsFromRemaining}</td>\n`;
+    output += `    <td>${player2Stats.pointsFromRemaining}</td>\n`;
+    output += "  </tr>\n";
+    output += "  <tr>\n";
+    output += "    <td>Bet Points</td>\n";
+    output += `    <td>${player1Stats.pointsFromBets}</td>\n`;
+    output += `    <td>${player2Stats.pointsFromBets}</td>\n`;
+    output += "  </tr>\n";
+  }
+
   output += "  <tr>\n";
   output += "    <td>Bets (w/t)</td>\n";
   output += `    <td>${player1Stats.successfulBets}/${player1Stats.totalBets}</td>\n`;
@@ -448,7 +479,7 @@ function render2pStatsAsHtmlString(tableId, stats) {
 
   for (const i in stats.rounds) {
     const round = stats.rounds[i];
-    
+
     output += `<h4>Round ${Number(i) + 1}</h4>\n`;
     output += "<table>\n";
     output += "  <tr>\n";
@@ -493,6 +524,11 @@ function render2pStatsAsHtmlString(tableId, stats) {
     output += `    <td>${round.bets[player2] ?? "NA"}</td>\n`;
     output += "  </tr>\n";
     output += "  <tr>\n";
+    output += "    <td>Card Sum</td>\n";
+    output += `    <td>${round.sums[player1] ?? 0}</td>\n`;
+    output += `    <td>${round.sums[player2] ?? 0}</td>\n`;
+    output += "  </tr>\n";
+    output += "  <tr>\n";
     output += "    <td>10s</td>\n";
     output += `    <td>${round.tens[player1] ?? 0}</td>\n`;
     output += `    <td>${round.tens[player2] ?? 0}</td>\n`;
@@ -506,11 +542,6 @@ function render2pStatsAsHtmlString(tableId, stats) {
     output += "    <td>Color Bombs</td>\n";
     output += `    <td>${round.colorBombs[player1] ?? 0}</td>\n`;
     output += `    <td>${round.colorBombs[player2] ?? 0}</td>\n`;
-    output += "  </tr>\n";
-    output += "  <tr>\n";
-    output += "    <td>Card Sum</td>\n";
-    output += `    <td>${round.sums[player1] ?? 0}</td>\n`;
-    output += `    <td>${round.sums[player2] ?? 0}</td>\n`;
     output += "  </tr>\n";
     output += "  <tr>\n";
     output += "    <td>Blue</td>\n";
@@ -996,7 +1027,7 @@ document.addEventListener("paste", async function (event) {
   document.getElementById("tableId").value = tableId;
 
   const withColor = addColorData(doc);
-  
+
   const serializer = new XMLSerializer();
   const serializedLogs = serializer.serializeToString(withColor);
 
