@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <title>Haggis Stats</title>
+        <script type="text/javascript" src="../chart.js"></script>
+        <script type="text/javascript" src="haggis.js"></script>
+        <style>
+            table {
+                table-layout: auto;
+                display: table;
+                border-spacing: 2px;
+                border-collapse: separate;
+                box-sizing: border-box;
+                text-indent: 0;
+                text-align: left;
+            }
+
+            th {
+                background: rgb(218, 218, 218);
+                padding: 2px 12px;
+            }
+
+            #main th,
+            td {
+                padding: 2px 12px;
+                min-width: 90px;
+                vertical-align: baseline;
+                border: 1px solid #fefefe;
+            }
+
+            .shaded tr:nth-child(odd) {
+                background-color: white;
+            }
+
+            .shaded tr:nth-child(even) {
+                background-color: #f9f9f9;
+            }
+
+            .chart {
+                margin-top: 2em;
+                margin-bottom: 2em;
+                position: relative;
+                width: 100%;
+                max-width: 800px;
+            }
+        </style>
+        <link rel="icon" type="image/x-icon" href="../favicon.jpeg">
+    </head>
+    <body onload="renderStats()">
+        <h1>Haggis Stats</h1>
+        <ul>
+            <li><a href="index.html">Home</a></li>
+            <li><a id="bgaLink" href="https://boardgamearena.com/table?table=">Table on BGA</a></li>
+        </ul>
+        <div id="stats"></div>
+    </body>
+</html>

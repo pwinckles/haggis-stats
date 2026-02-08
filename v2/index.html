@@ -3,16 +3,10 @@
     <head>
         <title>Haggis Stats</title>
         <script type="text/javascript" src="haggis.js"></script>
-        <style>
-            #allLogs { display: none;}
-        </style>
-        <link rel="icon" type="image/x-icon" href="favicon.jpeg">
+        <link rel="icon" type="image/x-icon" href="../favicon.jpeg">
     </head>
     <body>
         <h1>Haggis Stats</h1>
-
-        <a href="v2/index.html">Use the new version here!</a>
-
         <ol>
             <li>Select the completed game in BGA</li>
             <li>Click "View Game Replay"</li>
@@ -20,13 +14,11 @@
             <li>Paste the copied page into the following textbox</li>
         </ol>
         <form id="statsForm" action="display.html">
-            <div id="allLogs" contenteditable></div>
             <textarea id="logText" rows="10" cols="50"></textarea>
-            <input type="hidden" id="tableId" name="tableId">
             <input type="hidden" id="data" name="data">
             <br />
             <br />
-            <button type="button" onclick="parseLogAndPopulateForm()">Submit</button>
+            <button type="button" onclick="submitGame()">Submit</button>
         </form>
     </body>
 </html>
