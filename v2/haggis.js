@@ -43,8 +43,9 @@ async function renderStats() {
     document.getElementById("bgaLink").href = "https://boardgamearena.com/table?table=" + game.tableId;
 
     const stats = computeStats(game);
+    const hands = buildHands(game);
 
-    document.getElementById("stats").innerHTML = render2pStatsAsHtmlString(game.tableId, stats);
+    document.getElementById("stats").innerHTML = render2pStatsAsHtmlString(game.tableId, stats, game, hands);
     render2pCharts(stats);
 }
 
@@ -298,12 +299,10 @@ function computeStats(game) {
                 case 'plays': {
                     const cards = action.object.cards;
 
-                    if (!roundStats.hand[player]) {
-                        roundStats.hand[player] = createCardMap();
-                    }
-
                     for (const card of cards) {
-                        roundStats.hand[player][card.suit].push(card.rank);
+                        if (card.suit === 'w') {
+                            continue;
+                        }
 
                         const num = card.rank;
                         if (num === 10) {
@@ -338,10 +337,9 @@ function computeStats(game) {
                     }
 
                     for (const card of action.object.remaining[otherPlayer]) {
-                        if (!roundStats.hand[otherPlayer]) {
-                            roundStats.hand[otherPlayer] = createCardMap();
+                        if (card.suit === 'w') {
+                            continue;
                         }
-                        roundStats.hand[otherPlayer][card.suit].push(card.rank);
 
                         const num = card.rank;
                         if (num === 10) {
@@ -370,6 +368,62 @@ function computeStats(game) {
     addSumStats(stats);
 
     return stats;
+}
+
+function buildHands(game) {
+    const hands = [];
+    for (const round of game.rounds) {
+        hands.push(buildHandsForRound(game.players, round));
+    }
+    return hands;
+}
+
+function buildHandsForRound(players, round) {
+    const hands = {};
+    for (const player of players) {
+        hands[player] = [];
+    }
+    for (const action of round.actions) {
+        switch (action.predicate) {
+            case 'plays': {
+                hands[action.subject].push(...action.object.cards);
+                break;
+            }
+            case 'goes-out': {
+                const otherPlayer = findOtherPlayer(action.subject, players);
+                hands[otherPlayer].push(...action.object.remaining[otherPlayer]);
+                break;
+            }
+        }
+    }
+    for (const player of players) {
+        hands[player].sort(sortCardsByRank);
+    }
+    return hands;
+}
+
+function sortCardsByRank(left, right) {
+    if (left.suit === 'w' && right.suit === 'w') {
+        if (left.rank === 'J') {
+            return -1;
+        } else if (right.rank === 'J') {
+            return 1;
+        } else if (left.rank === 'Q') {
+            return -1;
+        } else {
+            return 1;
+        }
+    } else if (left.suit === 'w') {
+        return 1;
+    } else if (right.suit === 'w') {
+        return -1;
+    }
+
+    const result = left.rank - right.rank;
+    if (result !== 0) {
+        return result;
+    }
+    return left.suit.charCodeAt(0) - right.suit.charCodeAt(0);
 }
 
 function addSumStats(stats) {
@@ -425,15 +479,6 @@ function createPlayerStats() {
     };
 }
 
-function createCardMap() {
-    return {
-        r: [],
-        y: [],
-        b: [],
-        p: [],
-    }
-}
-
 function findOtherPlayer(player, players) {
     for (const otherPlayer of players) {
         if (player !== otherPlayer) {
@@ -471,7 +516,7 @@ function isRainbowBomb(cards) {
     return cards[0].rank === 3 && cards[1].rank === 5 && cards[2].rank === 7 && cards[3].rank === 9;
 }
 
-function render2pStatsAsHtmlString(tableId, stats) {
+function render2pStatsAsHtmlString(tableId, stats, game, hands) {
     const player1 = stats.players[0];
     const player2 = stats.players[1];
     const player1Stats = stats.playerStats[player1];
@@ -608,26 +653,29 @@ function render2pStatsAsHtmlString(tableId, stats) {
     output += "<div>\n<h3>Rounds</h3>\n";
 
     for (const i in stats.rounds) {
-        const round = stats.rounds[i];
+        const roundStats = stats.rounds[i];
+        const actions = game.rounds[i].actions;
+        const player1Hand = hands[i][player1];
+        const player2Hand = hands[i][player2];
 
         output += `<h4>Round ${Number(i) + 1}</h4>\n`;
         output += "<table>\n";
         output += "  <tr>\n";
         output += "    <td>Started</td>\n";
-        output += `    <td>${round.startPlayer}</td>\n`;
+        output += `    <td>${roundStats.startPlayer}</td>\n`;
         output += "  </tr>\n";
         output += "  <tr>\n";
         output += "    <td>Out First</td>\n";
-        output += `    <td>${round.outOrder[0]}</td>\n`;
+        output += `    <td>${roundStats.outOrder[0]}</td>\n`;
         output += "  </tr>\n";
         output += "  <tr>\n";
         output += "    <td>Remaining Cards</td>\n";
-        output += `    <td>${round.remainingCount[round.outOrder[0]]}</td>\n`;
+        output += `    <td>${roundStats.remainingCount[roundStats.outOrder[0]]}</td>\n`;
         output += "  </tr>\n";
         output += "  <tr>\n";
         output += "    <td>Card Sum Diff</td>\n";
         output += `    <td>${Math.abs(
-            round.sums[player1] - round.sums[player2]
+            roundStats.sums[player1] - roundStats.sums[player2]
         )}</td>\n`;
         output += "  </tr>\n";
         output += "</table>\n";
@@ -640,65 +688,160 @@ function render2pStatsAsHtmlString(tableId, stats) {
         output += "  </thead>\n";
         output += "  <tr>\n";
         output += "    <td>Starting Score</td>\n";
-        output += `    <td>${round.startingScore[player1] ?? 0}</td>\n`;
-        output += `    <td>${round.startingScore[player2] ?? 0}</td>\n`;
+        output += `    <td>${roundStats.startingScore[player1] ?? 0}</td>\n`;
+        output += `    <td>${roundStats.startingScore[player2] ?? 0}</td>\n`;
         output += "  </tr>\n";
         output += "  <tr>\n";
         output += "    <td>Points Gained</td>\n";
-        output += `    <td>${round.points[player1] ?? 0}</td>\n`;
-        output += `    <td>${round.points[player2] ?? 0}</td>\n`;
+        output += `    <td>${roundStats.points[player1] ?? 0}</td>\n`;
+        output += `    <td>${roundStats.points[player2] ?? 0}</td>\n`;
         output += "  </tr>\n";
         output += "  <tr>\n";
         output += "    <td>Bets</td>\n";
-        output += `    <td>${round.bets[player1] ?? "NA"}</td>\n`;
-        output += `    <td>${round.bets[player2] ?? "NA"}</td>\n`;
+        output += `    <td>${roundStats.bets[player1] ?? "NA"}</td>\n`;
+        output += `    <td>${roundStats.bets[player2] ?? "NA"}</td>\n`;
         output += "  </tr>\n";
         output += "  <tr>\n";
         output += "    <td>Card Sum</td>\n";
-        output += `    <td>${round.sums[player1] ?? 0}</td>\n`;
-        output += `    <td>${round.sums[player2] ?? 0}</td>\n`;
+        output += `    <td>${roundStats.sums[player1] ?? 0}</td>\n`;
+        output += `    <td>${roundStats.sums[player2] ?? 0}</td>\n`;
         output += "  </tr>\n";
         output += "  <tr>\n";
         output += "    <td>10s</td>\n";
-        output += `    <td>${round.tens[player1] ?? 0}</td>\n`;
-        output += `    <td>${round.tens[player2] ?? 0}</td>\n`;
+        output += `    <td>${roundStats.tens[player1] ?? 0}</td>\n`;
+        output += `    <td>${roundStats.tens[player2] ?? 0}</td>\n`;
         output += "  </tr>\n";
         output += "  <tr>\n";
         output += "    <td>Rainbow Bombs</td>\n";
-        output += `    <td>${round.rainbowBombs[player1] ?? 0}</td>\n`;
-        output += `    <td>${round.rainbowBombs[player2] ?? 0}</td>\n`;
+        output += `    <td>${roundStats.rainbowBombs[player1] ?? 0}</td>\n`;
+        output += `    <td>${roundStats.rainbowBombs[player2] ?? 0}</td>\n`;
         output += "  </tr>\n";
         output += "  <tr>\n";
         output += "    <td>Color Bombs</td>\n";
-        output += `    <td>${round.colorBombs[player1] ?? 0}</td>\n`;
-        output += `    <td>${round.colorBombs[player2] ?? 0}</td>\n`;
-        output += "  </tr>\n";
-        output += "  <tr>\n";
-        output += "    <td>Blue</td>\n";
-        output += `    <td>${round.hand[player1].b.sort(sortNumeric).join(', ')}</td>\n`;
-        output += `    <td>${round.hand[player2].b.sort(sortNumeric).join(', ')}</td>\n`;
-        output += "  </tr>\n";
-        output += "  <tr>\n";
-        output += "    <td>Purple</td>\n";
-        output += `    <td>${round.hand[player1].p.sort(sortNumeric).join(', ')}</td>\n`;
-        output += `    <td>${round.hand[player2].p.sort(sortNumeric).join(', ')}</td>\n`;
-        output += "  </tr>\n";
-        output += "  <tr>\n";
-        output += "    <td>Red</td>\n";
-        output += `    <td>${round.hand[player1].r.sort(sortNumeric).join(', ')}</td>\n`;
-        output += `    <td>${round.hand[player2].r.sort(sortNumeric).join(', ')}</td>\n`;
-        output += "  </tr>\n";
-        output += "  <tr>\n";
-        output += "    <td>Yellow</td>\n";
-        output += `    <td>${round.hand[player1].y.sort(sortNumeric).join(', ')}</td>\n`;
-        output += `    <td>${round.hand[player2].y.sort(sortNumeric).join(', ')}</td>\n`;
+        output += `    <td>${roundStats.colorBombs[player1] ?? 0}</td>\n`;
+        output += `    <td>${roundStats.colorBombs[player2] ?? 0}</td>\n`;
         output += "  </tr>\n";
         output += "</table>\n";
+
+        output += "<details>\n";
+        output += "  <summary>Log</summary>\n";
+        output += "  <table class='shaded'>\n";
+        output += "    <thead>\n";
+        output += "      <tr>\n";
+        output += `        <th colspan='2' style="text-align: center;">${player1}</th>\n`;
+        output += `        <th colspan='2' style="text-align: center;">${player2}</th>\n`;
+        output += "      </tr>\n";
+        output += "      <tr>\n";
+        output += "        <th>Hand</th>\n";
+        output += "        <th>Action</th>\n";
+        output += "        <th>Action</th>\n";
+        output += "        <th>Hand</th>\n";
+        output += "      </tr>\n";
+        output += "    </thead>\n";
+
+        output += logRowHtml(handToHtml(player1Hand), '', '', handToHtml(player2Hand));
+
+        let haggis = null;
+
+        for (const action of actions) {
+            const player = action.subject;
+            const isPlayer1 = player === player1;
+            switch (action.predicate) {
+                case 'plays': {
+                    const cards = action.object.cards;
+                    removeCardsFromHand(cards, hands[i][player]);
+                    const playHtml = playToHtml(cards);
+                    const player1Action = isPlayer1 ? playHtml : '';
+                    const player2Action = !isPlayer1 ? playHtml : '';
+                    output += logRowHtml(handToHtml(player1Hand), player1Action, player2Action, handToHtml(player2Hand));
+                    break;
+                }
+                case 'bets': {
+                    const bet = `Bets ${action.object.points}`;
+                    const player1Action = isPlayer1 ? bet : '';
+                    const player2Action = !isPlayer1 ? bet : '';
+                    output += logRowHtml('', player1Action, player2Action, '');
+                    break;
+                }
+                case 'scores': {
+                    const score = `${action.object.points} fr ${action.object.reason}`;
+                    const player1Action = isPlayer1 ? score : '';
+                    const player2Action = !isPlayer1 ? score : '';
+                    output += logRowHtml('', player1Action, player2Action, '');
+                    break;
+                }
+                case 'goes-out': {
+                    haggis = action.object.haggis;
+                }
+            }
+        }
+
+        if (haggis != null) {
+            output += "    <tr>\n";
+            output += `      <td colspan='4' style="text-align: center;">Haggis: ${handToHtml(haggis)}</td>\n`;
+            output += "    </tr>\n";
+        }
+
+        output += "  </table>\n";
+        output += "</details>\n";
     }
 
     output += "</div>\n";
 
     return output;
+}
+
+function logRowHtml(player1Hand, player1Action, player2Action, player2Hand) {
+    let output = "";
+    output += "    <tr>\n";
+    output += `      <td>${player1Hand}</td>\n`;
+    output += `      <td>${player1Action}</td>\n`;
+    output += `      <td>${player2Action}</td>\n`;
+    output += `      <td>${player2Hand}</td>\n`;
+    output += "    </tr>\n";
+    return output;
+}
+
+function removeCardsFromHand(cards, hand) {
+    for (const card of cards) {
+        for (const i in hand) {
+            const handCard = hand[i];
+            if (cardEquals(card, handCard)) {
+                hand.splice(i, 1);
+                break;
+            }
+        }
+    }
+}
+
+function cardEquals(left, right) {
+    return left.rank === right.rank && left.suit === right.suit;
+}
+
+function playToHtml(cards) {
+    let output = "";
+    for (const card of cards) {
+        output += `<span class="card-${lookupSuitColor(card)}">${card.rank}</span>-`;
+    }
+    return output.substring(0, output.length - 2);
+}
+
+function handToHtml(hand) {
+    let output = "";
+    for (const card of hand) {
+        output += `<span class="card-${lookupSuitColor(card)}">${card.rank}</span>, `;
+    }
+    return output.substring(0, output.length - 3);
+}
+
+function lookupSuitColor(card) {
+    switch (card.suit) {
+        case 'b': return 'blue';
+        case 'p': return 'purple';
+        case 'r': return 'red';
+        case 'y': return 'yellow';
+        default: return 'black';
+    }
 }
 
 async function serializeJson(json) {
@@ -777,7 +920,12 @@ function addColorData(doc) {
 }
 
 function parseCard(text) {
-    if (/^[rbpy]\d+/.test(text)) {
+    if (text === 'J' || text === 'Q' || text === 'K') {
+        return {
+            suit: 'w',
+            rank: text
+        };
+    } else if (/^[rbpy]\d+/.test(text)) {
         const rank = Number(text.slice(1));
         if (!isNaN(rank)) {
             return {
