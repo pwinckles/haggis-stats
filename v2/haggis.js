@@ -1039,9 +1039,11 @@ function render2pSimpleChart(stats, labels, field, canvasId, title, cumulative) 
             labels: labels,
             datasets: [{
                 label: `${player1}`,
+                borderWidth: 1,
                 data: player1Data
             }, {
                 label: `${player2}`,
+                borderWidth: 1,
                 data: player2Data
             }]
         },
@@ -1092,9 +1094,11 @@ function render2pBombChart(stats, labels, canvasId, cumulative) {
             labels: labels,
             datasets: [{
                 label: `${player1}`,
+                borderWidth: 1,
                 data: player1Data
             }, {
                 label: `${player2}`,
+                borderWidth: 1,
                 data: player2Data
             }]
         },
