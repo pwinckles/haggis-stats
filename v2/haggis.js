@@ -380,13 +380,20 @@ function buildHands(game) {
 
 function buildHandsForRound(players, round) {
     const hands = {};
+    const bombs = {};
     for (const player of players) {
         hands[player] = [];
+        bombs[player] = [];
     }
     for (const action of round.actions) {
         switch (action.predicate) {
             case 'plays': {
-                hands[action.subject].push(...action.object.cards);
+                const cards = action.object.cards;
+                if (isColorBomb(cards) || isRainbowBomb(cards)) {
+                    bombs[action.subject].push(cards);
+                } else {
+                    hands[action.subject].push(...cards);
+                }
                 break;
             }
             case 'goes-out': {
@@ -398,6 +405,11 @@ function buildHandsForRound(players, round) {
     }
     for (const player of players) {
         hands[player].sort(sortCardsByRank);
+    }
+    for (const player of players) {
+        for (const bomb of bombs[player]) {
+            hands[player].unshift(...bomb);
+        }
     }
     return hands;
 }
@@ -749,8 +761,10 @@ function render2pStatsAsHtmlString(tableId, stats, game, hands) {
             switch (action.predicate) {
                 case 'plays': {
                     const cards = action.object.cards;
-                    removeCardsFromHand(cards, hands[i][player]);
                     const playHtml = playToHtml(cards);
+                    removeCardsFromHand(cards, hands[i][player]);
+                    // const player1HandHtml = isPlayer1 ? handToHtmlHighlightPlayed(player1Hand, cards) : handToHtml(player1Hand);
+                    // const player2HandHtml = !isPlayer1 ? handToHtmlHighlightPlayed(player2Hand, cards) : handToHtml(player2Hand);
                     const player1Action = isPlayer1 ? playHtml : '';
                     const player2Action = !isPlayer1 ? playHtml : '';
                     output += logRowHtml(handToHtml(player1Hand), player1Action, player2Action, handToHtml(player2Hand));
@@ -818,10 +832,19 @@ function cardEquals(left, right) {
     return left.rank === right.rank && left.suit === right.suit;
 }
 
+function cardInList(card, cards) {
+    for (const c of cards) {
+        if (cardEquals(card, c)) {
+            return true;
+        }
+    }
+    return false;
+}
+
 function playToHtml(cards) {
     let output = "";
     for (const card of cards) {
-        output += `<span class="card-${lookupSuitColor(card)}">${card.rank}</span>-`;
+        output += `<span class="card card-${lookupSuitColor(card)}">${card.rank}</span>-`;
     }
     return output.substring(0, output.length - 2);
 }
@@ -829,7 +852,19 @@ function playToHtml(cards) {
 function handToHtml(hand) {
     let output = "";
     for (const card of hand) {
-        output += `<span class="card-${lookupSuitColor(card)}">${card.rank}</span>, `;
+        output += `<span class="card card-${lookupSuitColor(card)}">${card.rank}</span>, `;
+    }
+    return output.substring(0, output.length - 3);
+}
+
+function handToHtmlHighlightPlayed(hand, cardsPlayed) {
+    let output = "";
+    for (const card of hand) {
+        let classes = `card card-${lookupSuitColor(card)}`;
+        if (cardInList(card, cardsPlayed)) {
+            classes += ' highlighted';
+        }
+        output += `<span class="${classes}">${card.rank}</span>, `;
     }
     return output.substring(0, output.length - 3);
 }
