@@ -1,3 +1,50 @@
+const SET_VALUES = {
+    2: 2,
+    3: 4,
+    4: 6,
+};
+
+const RUN_VALUES = {
+    3: 3,
+    4: 5,
+    5: 7,
+    6: 9,
+    7: 11,
+    8: 13,
+    9: 15,
+};
+
+const STAIR_VALUES = {
+    "2x2": 6,
+    "2x3": 8,
+    "2x4": 12,
+    "2x5": 16,
+    "2x6": 20,
+    "2x7": 24,
+    "3x2": 10,
+    "3x3": 14,
+    "3x4": 18,
+    "4x2": 16,
+    "4x3": 20,
+}
+
+const COLOR_VALUE = 20;
+const RAINBOW_VALUE = 15;
+const DANGLER_VALUE = 1;
+const SINGLE_VALUE = -1;
+
+const CARD_VALUES = {
+    2: 0,
+    3: 0,
+    4: 0,
+    5: 0,
+    6: 0,
+    7: 1,
+    8: 2,
+    9: 2,
+    10: 3,
+};
+
 document.addEventListener("paste", async function (event) {
     const clipboardData = event.clipboardData || window.clipboardData;
     const htmlData = clipboardData.getData("text/html");
@@ -42,8 +89,8 @@ async function renderStats() {
 
     document.getElementById("bgaLink").href = "https://boardgamearena.com/table?table=" + game.tableId;
 
-    const stats = computeStats(game);
     const hands = buildHands(game);
+    const stats = computeStats(game, hands);
 
     document.getElementById("stats").innerHTML = render2pStatsAsHtmlString(game.tableId, stats, game, hands);
     render2pCharts(stats);
@@ -231,7 +278,7 @@ function parseRemainingCardsLine(line) {
     return cards;
 }
 
-function computeStats(game) {
+function computeStats(game, hands) {
     const stats = {
         playerCount: game.players.length,
         players: game.players,
@@ -252,6 +299,7 @@ function computeStats(game) {
             rainbowBombs: {},
             startingScore: {},
             sums: {},
+            values: {},
             points: {},
             hand: {},
             outOrder: [],
@@ -365,7 +413,18 @@ function computeStats(game) {
     stats.winner = (stats.playerStats[game.players[0]].score > stats.playerStats[game.players[1]].score)
         ? game.players[0] : game.players[1];
 
+    for (let i = 0; i < stats.rounds.length; i++) {
+        const roundStats = stats.rounds[i];
+        for (const player of stats.players) {
+            const hand = hands[i][player];
+            const value = computeHandValue(hand);
+            roundStats.values[player] = value;
+            stats.playerStats[player].valueTotal += value;
+        }
+    }
+
     addSumStats(stats);
+    addValueStats(stats);
 
     return stats;
 }
@@ -456,13 +515,38 @@ function addSumStats(stats) {
         stats.playerStats[name].sumMax = max;
     }
 
-    if (stats.playerCount === 2) {
+    for (const round of stats.rounds) {
+        if (round.sums[stats.players[0]] < round.sums[stats.players[1]]) {
+            stats.playerStats[stats.players[1]].largerSum += 1;
+        } else if (round.sums[stats.players[0]] > round.sums[stats.players[1]]) {
+            stats.playerStats[stats.players[0]].largerSum += 1;
+        }
+    }
+}
+
+function addValueStats(stats) {
+    for (const name of stats.players) {
+        stats.playerStats[name].valueAvg = stats.playerStats[name].valueTotal / stats.rounds.length;
+        let min = 999999;
+        let max = 0;
         for (const round of stats.rounds) {
-            if (round.sums[stats.players[0]] < round.sums[stats.players[1]]) {
-                stats.playerStats[stats.players[1]].largerSum += 1;
-            } else if (round.sums[stats.players[0]] > round.sums[stats.players[1]]) {
-                stats.playerStats[stats.players[0]].largerSum += 1;
+            const value = round.values[name];
+            if (value > max) {
+                max = value;
             }
+            if (value < min) {
+                min = value;
+            }
+        }
+        stats.playerStats[name].valueMin = min;
+        stats.playerStats[name].valueMax = max;
+    }
+
+    for (const round of stats.rounds) {
+        if (round.values[stats.players[0]] < round.values[stats.players[1]]) {
+            stats.playerStats[stats.players[1]].largerValue += 1;
+        } else if (round.values[stats.players[0]] > round.values[stats.players[1]]) {
+            stats.playerStats[stats.players[0]].largerValue += 1;
         }
     }
 }
@@ -487,7 +571,11 @@ function createPlayerStats() {
         sumMax: 0,
         sumAvg: 0,
         largerSum: 0,
-        slams: 0,
+        valueTotal: 0,
+        valueMin: 0,
+        valueMax: 0,
+        valueAvg: 0,
+        largerValue: 0,
     };
 }
 
@@ -526,6 +614,323 @@ function isRainbowBomb(cards) {
         return false;
     }
     return cards[0].rank === 3 && cards[1].rank === 5 && cards[2].rank === 7 && cards[3].rank === 9;
+}
+
+function computeHandValue(originalHand) {
+    const hand = [...originalHand];
+    removeCardsFromHand([
+        {rank: 'J', suit: 'w'},
+        {rank: 'Q', suit: 'w'},
+        {rank: 'K', suit: 'w'},
+    ], hand);
+
+    const colorBombs = findColorBombs(hand);
+    const rainbowBombs = findRainbowBombs(hand);
+    const rainbowBombSets = createBombSets(rainbowBombs);
+
+    let mostRainbows = 0;
+    for (const bombs of rainbowBombSets) {
+        if (bombs.length > mostRainbows) {
+            mostRainbows = bombs.length;
+        }
+    }
+
+    let value = 0;
+
+    if (rainbowBombs.length === 0 || (colorBombs.length > 0 && mostRainbows < 2)) {
+        value = computeHandValueWithBombs(hand, colorBombs);
+        value += COLOR_VALUE * colorBombs.length;
+    } else {
+        let highValue = 0;
+        let highBombs = [];
+        for (const bombs of rainbowBombSets) {
+            let currentValue = computeHandValueWithBombs(hand, bombs);
+            currentValue += RAINBOW_VALUE * bombs.length;
+            if (currentValue > highValue) {
+                highValue = currentValue;
+                highBombs = bombs;
+            }
+        }
+        if (colorBombs.length > 0) {
+            let currentValue = computeHandValueWithBombs(hand, colorBombs);
+            currentValue += COLOR_VALUE * colorBombs.length;
+            if (currentValue > highValue) {
+                highValue = currentValue;
+                highBombs = colorBombs;
+            }
+        }
+        value = highValue;
+    }
+
+    return value;
+}
+
+function computeHandValueWithBombs(originalHand, bombs) {
+    const hand = [...originalHand];
+    for (const bomb of bombs) {
+        removeCardsFromHand(bomb, hand);
+    }
+
+    const combos = countCombos(hand);
+    let value = 0;
+
+    for (const [set, count] of Object.entries(combos.sets)) {
+        value += SET_VALUES[set] * count;
+    }
+    for (const [run, count] of Object.entries(combos.runs)) {
+        value += RUN_VALUES[run] * count;
+    }
+    for (const [stair, count] of Object.entries(combos.stairs)) {
+        value += STAIR_VALUES[stair] * count;
+    }
+
+    value += combos.danglers * DANGLER_VALUE;
+    value += combos.singles * SINGLE_VALUE;
+
+    for (const card of hand) {
+        if (card.suit !== 'w') {
+            value += CARD_VALUES[card.rank];
+        }
+    }
+
+    return value;
+}
+
+function countCombos(hand) {
+    const cardsByRank = {
+        2: [],
+        3: [],
+        4: [],
+        5: [],
+        6: [],
+        7: [],
+        8: [],
+        9: [],
+        10: []
+    };
+
+    for (const card of hand) {
+        if (card.suit !== 'w') {
+            cardsByRank[card.rank].push(card.suit);
+        }
+    }
+
+    const combos = {
+        singles: 0,
+        sets: {},
+        runs: {},
+        stairs: {},
+        bombs: {
+            color: 0,
+            rainbow: 0,
+        },
+        danglers: 0,
+    };
+
+    for (let i = 2; i < 11; i++) {
+        const previousSuits = cardsByRank[i - 1] ?? [];
+        const nextSuits = cardsByRank[i + 1] ?? [];
+        const lengths = {};
+
+        for (let j = cardsByRank[i].length; j > 0; j--) {
+            const suitCombinations = combinations(cardsByRank[i], j);
+            for (const currentSuits of suitCombinations) {
+                if (!containSuits(currentSuits, previousSuits)) {
+                    let length = 1;
+                    for (let k = i + 1; k < 11; k++) {
+                        if (!containSuits(currentSuits, cardsByRank[k])) {
+                            break;
+                        }
+                        length++;
+                    }
+
+                    if (length > 1 && currentSuits.length > 1) {
+                        lengths[currentSuits.length] = length;
+                    }
+
+                    if (length > 1) {
+                        let isSubset = false;
+                        for (let k = currentSuits.length + 1; k < 5; k++) {
+                            if ((lengths[k] ?? 0) >= length) {
+                                isSubset = true;
+                            }
+                        }
+
+                        if (isSubset) {
+                            continue;
+                        }
+                    }
+
+                    if (length === 1 && currentSuits.length > 1 && currentSuits.length === cardsByRank[i].length) {
+                        combos.sets[currentSuits.length] = (combos.sets[currentSuits.length] ?? 0) + 1;
+                    } else if (length > 1 && currentSuits.length > 1) {
+                        const key = `${currentSuits.length}x${length}`;
+                        combos.stairs[key] = (combos.stairs[key] ?? 0) + 1;
+                    } else if (length > 2 && currentSuits.length === 1) {
+                        combos.runs[length] = (combos.runs[length] ?? 0) + 1;
+                    }
+                }
+            }
+        }
+
+        if (cardsByRank[i].length === 1
+            && !(containSuits(cardsByRank[i], nextSuits) && containSuits(cardsByRank[i], previousSuits))
+            && !containSuits(cardsByRank[i], (cardsByRank[i - 2] ?? []))
+            && !containSuits(nextSuits, (cardsByRank[i + 2] ?? []))) {
+            if (containSuits(cardsByRank[i], nextSuits) || containSuits(cardsByRank[i], previousSuits)) {
+                combos.danglers++;
+            }
+            combos.singles++;
+        }
+    }
+
+    return combos;
+}
+
+function findColorBombs(cards) {
+    const cardsByRank = {
+        3: [],
+        5: [],
+        7: [],
+        9: []
+    };
+    for (const card of cards) {
+        if (card.rank % 2 === 1) {
+            cardsByRank[card.rank].push(card.suit);
+        }
+    }
+
+    const bombs = [];
+
+    for (const suit of ['b', 'p', 'r', 'y']) {
+        if (cardsByRank[3].includes(suit)
+            && cardsByRank[5].includes(suit)
+            && cardsByRank[7].includes(suit)
+            && cardsByRank[9].includes(suit)) {
+            bombs.push([
+                {rank: 3, suit: suit},
+                {rank: 5, suit: suit},
+                {rank: 7, suit: suit},
+                {rank: 9, suit: suit}
+            ]);
+        }
+    }
+
+    return bombs;
+}
+
+function findRainbowBombs(cards) {
+    const cardsByRank = {
+        3: [],
+        5: [],
+        7: [],
+        9: []
+    };
+    for (const card of cards) {
+        if (card.rank % 2 === 1) {
+            cardsByRank[card.rank].push(card.suit);
+        }
+    }
+
+    return bombPermutations(cardsByRank[3], cardsByRank[5], cardsByRank[7], cardsByRank[9]);
+}
+
+function createBombSets(bombs) {
+    const bombSets = [];
+
+    for (let i = 0; i < bombs.length; i++) {
+        const bombSet = [bombs[i]];
+        bombSets.push(bombSet);
+        for (let j = 0; j < bombs.length; j++) {
+            if (i === j) {
+                continue;
+            }
+            if (!bombsIntersect(bombs[i], bombs[j])) {
+                bombSet.push(bombs[j]);
+            }
+        }
+    }
+
+    return bombSets;
+}
+
+function bombsIntersect(bomb1, bomb2) {
+    for (let i = 0; i < 4; i++) {
+        if (bomb1[i].suit === bomb2[i].suit) {
+            return true;
+        }
+    }
+    return false;
+}
+
+function bombPermutations(threes, fives, sevens, nines) {
+    const bombs = [];
+    for (const three of threes) {
+        for (const five of fives) {
+            for (const seven of sevens) {
+                for (const nine of nines) {
+                    if (new Set([three, five, seven, nine]).size === 4) {
+                        bombs.push([
+                            {rank: 3, suit: three},
+                            {rank: 5, suit: five},
+                            {rank: 7, suit: seven},
+                            {rank: 9, suit: nine}
+                        ]);
+                    }
+                }
+            }
+        }
+    }
+    return bombs;
+}
+
+function containSuits(needleSuits, haystackSuits) {
+    for (const suit of needleSuits) {
+        if (!haystackSuits.includes(suit)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+function combinations(suits, count) {
+    let results = [];
+    if (suits.length === count) {
+        results.push(suits);
+    } else if (suits.length > count) {
+        if (count === 3) {
+            results = combinationsPick3(suits);
+        } else if (count === 2) {
+            results = combinationsPick2(suits);
+        } else if (count === 1) {
+            for (const suit of suits) {
+                results.push([suit]);
+            }
+        }
+    }
+    return results;
+}
+
+function combinationsPick2(suits) {
+    const results = [];
+    for (let i = 0; i < suits.length - 1; i++) {
+        for (let j = i + 1; j < suits.length; j++) {
+            results.push([suits[i], suits[j]]);
+        }
+    }
+    return results;
+}
+
+function combinationsPick3(suits) {
+    const results = [];
+    for (let i = 0; i < suits.length - 2; i++) {
+        for (let j = i + 1; j < suits.length - 1; j++) {
+            for (let k = j + 1; k < suits.length; k++) {
+                results.push([suits[i], suits[j], suits[k]]);
+            }
+        }
+    }
+    return results;
 }
 
 function render2pStatsAsHtmlString(tableId, stats, game, hands) {
@@ -616,11 +1021,6 @@ function render2pStatsAsHtmlString(tableId, stats, game, hands) {
     output += `    <td>${player2Stats.led}</td>\n`;
     output += "  </tr>\n";
     output += "  <tr>\n";
-    output += "    <td>Started & Out First</td>\n";
-    output += `    <td>${player1Stats.ledAndWon}</td>\n`;
-    output += `    <td>${player2Stats.ledAndWon}</td>\n`;
-    output += "  </tr>\n";
-    output += "  <tr>\n";
     output += "    <td>10s</td>\n";
     output += `    <td>${player1Stats.tens}</td>\n`;
     output += `    <td>${player2Stats.tens}</td>\n`;
@@ -636,9 +1036,14 @@ function render2pStatsAsHtmlString(tableId, stats, game, hands) {
     output += `    <td>${player2Stats.colorBombs}</td>\n`;
     output += "  </tr>\n";
     output += "  <tr>\n";
-    output += "    <td>Card Sum</td>\n";
+    output += "    <td>Card Sum Total</td>\n";
     output += `    <td>${player1Stats.sumTotal}</td>\n`;
     output += `    <td>${player2Stats.sumTotal}</td>\n`;
+    output += "  </tr>\n";
+    output += "  <tr>\n";
+    output += "    <td>Card Sum Avg/Min/Max</td>\n";
+    output += `    <td>${player1Stats.sumAvg.toFixed(2)} / ${player1Stats.sumMin} / ${player1Stats.sumMax}</td>\n`;
+    output += `    <td>${player2Stats.sumAvg.toFixed(2)} / ${player2Stats.sumMin} / ${player2Stats.sumMax}</td>\n`;
     output += "  </tr>\n";
     output += "  <tr>\n";
     output += "    <td>Rounds with > Sum</td>\n";
@@ -646,19 +1051,19 @@ function render2pStatsAsHtmlString(tableId, stats, game, hands) {
     output += `    <td>${player2Stats.largerSum}</td>\n`;
     output += "  </tr>\n";
     output += "  <tr>\n";
-    output += "    <td>Card Sum Avg</td>\n";
-    output += `    <td>${player1Stats.sumAvg.toFixed(2)}</td>\n`;
-    output += `    <td>${player2Stats.sumAvg.toFixed(2)}</td>\n`;
+    output += "    <td>Hand Value Total</td>\n";
+    output += `    <td>${player1Stats.valueTotal}</td>\n`;
+    output += `    <td>${player2Stats.valueTotal}</td>\n`;
     output += "  </tr>\n";
     output += "  <tr>\n";
-    output += "    <td>Card Sum Min</td>\n";
-    output += `    <td>${player1Stats.sumMin}</td>\n`;
-    output += `    <td>${player2Stats.sumMin}</td>\n`;
+    output += "    <td>Hand Value Avg/Min/Max</td>\n";
+    output += `    <td>${player1Stats.valueAvg.toFixed(2)} / ${player1Stats.valueMin} / ${player1Stats.valueMax}</td>\n`;
+    output += `    <td>${player2Stats.valueAvg.toFixed(2)} / ${player2Stats.valueMin} / ${player2Stats.valueMax}</td>\n`;
     output += "  </tr>\n";
     output += "  <tr>\n";
-    output += "    <td>Card Sum Max</td>\n";
-    output += `    <td>${player1Stats.sumMax}</td>\n`;
-    output += `    <td>${player2Stats.sumMax}</td>\n`;
+    output += "    <td>Rounds with > Value</td>\n";
+    output += `    <td>${player1Stats.largerValue}</td>\n`;
+    output += `    <td>${player2Stats.largerValue}</td>\n`;
     output += "  </tr>\n";
     output += "</table>\n</div>\n";
 
@@ -690,6 +1095,12 @@ function render2pStatsAsHtmlString(tableId, stats, game, hands) {
             roundStats.sums[player1] - roundStats.sums[player2]
         )}</td>\n`;
         output += "  </tr>\n";
+        output += "  <tr>\n";
+        output += "    <td>Hand Value Diff</td>\n";
+        output += `    <td>${Math.abs(
+            roundStats.values[player1] - roundStats.values[player2]
+        )}</td>\n`;
+        output += "  </tr>\n";
         output += "</table>\n";
 
         output += "<table class='shaded'>\n";
@@ -717,6 +1128,11 @@ function render2pStatsAsHtmlString(tableId, stats, game, hands) {
         output += "    <td>Card Sum</td>\n";
         output += `    <td>${roundStats.sums[player1] ?? 0}</td>\n`;
         output += `    <td>${roundStats.sums[player2] ?? 0}</td>\n`;
+        output += "  </tr>\n";
+        output += "  <tr>\n";
+        output += "    <td>Hand Value</td>\n";
+        output += `    <td>${roundStats.values[player1] ?? 0}</td>\n`;
+        output += `    <td>${roundStats.values[player2] ?? 0}</td>\n`;
         output += "  </tr>\n";
         output += "  <tr>\n";
         output += "    <td>10s</td>\n";
@@ -1023,6 +1439,7 @@ function appendChartElements() {
 
     appendChartAnchor('scoreChart');
     appendChartAnchor('sumChart');
+    appendChartAnchor('valueChart');
     appendChartAnchor('tenChart');
     appendChartAnchor('bombChart');
 }
@@ -1037,7 +1454,7 @@ function appendChartAnchor(id) {
 }
 
 function removeAll2pCharts() {
-    const chartIds = ['scoreChart', 'sumChart', 'tenChart', 'bombChart'];
+    const chartIds = ['scoreChart', 'sumChart', 'valueChart', 'tenChart', 'bombChart'];
     for (const chart of chartIds) {
         removeChart(chart);
     }
@@ -1055,6 +1472,7 @@ function removeChart(canvasId) {
 function render2pChartsByType(stats, labels, cumulative) {
     render2pSimpleChart(stats, labels, 'points', 'scoreChart', 'Points', cumulative);
     render2pSimpleChart(stats, labels, 'sums', 'sumChart', 'Card Sum', cumulative);
+    render2pSimpleChart(stats, labels, 'values', 'valueChart', 'Hand Value', cumulative);
     render2pSimpleChart(stats, labels, 'tens', 'tenChart', '10 Count', cumulative);
     render2pBombChart(stats, labels, 'bombChart', cumulative);
 }
